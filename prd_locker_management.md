@@ -42,8 +42,7 @@ invoices, and clear deadlines.
 #### 3.1 Parent Portal
 
 -   Parents register (name, address, language, email).
--   Parents can manage multiple children.
--   Parents can request lockers for each child:
+-   Parents request lockers by providing student name and class inline (no persistent child profile stored).
     -   Select school year (e.g., 2025/26)
     -   Choose zone preference
     -   Optionally enter desired locker number
@@ -79,7 +78,7 @@ invoices, and clear deadlines.
 
 #### 4.1 Locker Request
 
-1.  Parent logs in → selects child & school year → selects zone.
+1.  Parent logs in → enters student name/class & school year → selects zone.
 2.  System reserves a free locker.
 3.  Generates PDF invoice.
 4.  Sends email with invoice and payment deadline (e.g., 7 days).
@@ -116,9 +115,8 @@ invoices, and clear deadlines.
   **parents** *(auth)*       Parent accounts      name, address, phone,
                                                   language
 
-  **children**               Students             parent, name, class
-
-  **requests**               Locker requests      parent, child,
+  **requests**               Locker requests      parent, student_name,
+                                                  student_class,
                                                   school_year,
                                                   preferred_zone,
                                                   preferred_locker, status
