@@ -5,6 +5,7 @@ import (
 
 	"github.com/pocketbase/pocketbase/core"
 	pm "github.com/pocketbase/pocketbase/migrations"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 func init() {
@@ -13,7 +14,15 @@ func init() {
 		if err := json.Unmarshal([]byte(collectionsJSON), &collections); err != nil {
 			return err
 		}
-		return app.ImportCollections(collections, false)
+		if err := app.ImportCollections(collections, false); err != nil {
+			return err
+		}
+
+		if err := setAccessRules(app); err != nil {
+			return err
+		}
+
+		return nil
 	}, func(app core.App) error {
 		ids := []string{
 			"dpnhs2xr3by2ue8",
@@ -39,6 +48,51 @@ func init() {
 		}
 		return nil
 	})
+}
+
+func setAccessRules(app core.App) error {
+	requests, err := app.FindCollectionByNameOrId("requests")
+	if err != nil {
+		return err
+	}
+	requests.ListRule = types.Pointer("@request.auth.role = 'staff' || parent = @request.auth.id")
+	requests.ViewRule = types.Pointer("@request.auth.role = 'staff' || parent = @request.auth.id")
+	requests.CreateRule = types.Pointer("@request.auth.role = 'staff' || parent = @request.auth.id")
+	if err := app.Save(requests); err != nil {
+		return err
+	}
+
+	invoices, err := app.FindCollectionByNameOrId("invoices")
+	if err != nil {
+		return err
+	}
+	invoices.ListRule = types.Pointer("@request.auth.role = 'staff' || request.parent = @request.auth.id")
+	invoices.ViewRule = types.Pointer("@request.auth.role = 'staff' || request.parent = @request.auth.id")
+	if err := app.Save(invoices); err != nil {
+		return err
+	}
+
+	assignments, err := app.FindCollectionByNameOrId("assignments")
+	if err != nil {
+		return err
+	}
+	assignments.ListRule = types.Pointer("@request.auth.role = 'staff' || request.parent = @request.auth.id")
+	assignments.ViewRule = types.Pointer("@request.auth.role = 'staff' || request.parent = @request.auth.id")
+	if err := app.Save(assignments); err != nil {
+		return err
+	}
+
+	renewals, err := app.FindCollectionByNameOrId("renewals")
+	if err != nil {
+		return err
+	}
+	renewals.ListRule = types.Pointer("@request.auth.role = 'staff' || assignment.request.parent = @request.auth.id")
+	renewals.ViewRule = types.Pointer("@request.auth.role = 'staff' || assignment.request.parent = @request.auth.id")
+	if err := app.Save(renewals); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 const collectionsJSON = `
@@ -411,9 +465,9 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || parent = @request.auth.id",
-    "viewRule": "@request.auth.role = 'staff' || parent = @request.auth.id",
-    "createRule": "@request.auth.role = 'staff' || parent = @request.auth.id",
+    "listRule": null,
+    "viewRule": null,
+    "createRule": null,
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
     "options": {}
@@ -599,8 +653,8 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || request.parent = @request.auth.id",
-    "viewRule": "@request.auth.role = 'staff' || request.parent = @request.auth.id",
+    "listRule": null,
+    "viewRule": null,
     "createRule": "@request.auth.role = 'staff'",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
@@ -660,8 +714,8 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || request.parent = @request.auth.id",
-    "viewRule": "@request.auth.role = 'staff' || request.parent = @request.auth.id",
+    "listRule": null,
+    "viewRule": null,
     "createRule": "@request.auth.role = 'staff'",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
@@ -734,8 +788,8 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || assignment.request.parent = @request.auth.id",
-    "viewRule": "@request.auth.role = 'staff' || assignment.request.parent = @request.auth.id",
+    "listRule": null,
+    "viewRule": null,
     "createRule": "@request.auth.role = 'staff'",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
