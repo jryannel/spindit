@@ -411,9 +411,9 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || @request.auth.id = parent",
-    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = parent",
-    "createRule": "@request.auth.role = 'staff' || @request.auth.id = parent",
+    "listRule": "@request.auth.role = 'staff' || parent = @request.auth.id",
+    "viewRule": "@request.auth.role = 'staff' || parent = @request.auth.id",
+    "createRule": "@request.auth.role = 'staff' || parent = @request.auth.id",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
     "options": {}
@@ -599,8 +599,8 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent",
-    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent",
+    "listRule": "@request.auth.role = 'staff' || request.parent = @request.auth.id",
+    "viewRule": "@request.auth.role = 'staff' || request.parent = @request.auth.id",
     "createRule": "@request.auth.role = 'staff'",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
@@ -660,8 +660,8 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent",
-    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent",
+    "listRule": "@request.auth.role = 'staff' || request.parent = @request.auth.id",
+    "viewRule": "@request.auth.role = 'staff' || request.parent = @request.auth.id",
     "createRule": "@request.auth.role = 'staff'",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
