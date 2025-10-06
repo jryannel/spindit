@@ -15,9 +15,17 @@ PocketBase v0.30 backend scaffolding for the School Locker Management SaaS. This
    go mod tidy
    go build ./...
    ```
+   Or use the Taskfile shortcut:
+   ```bash
+   task build
+   ```
 2. Apply migrations and seed data using the Go migration pack:
    ```bash
-   go run ./cmd/pocketbase serve --dev --migrationsDir ./migrations
+   go run . serve --dev --migrationsDir ./migrations
+   ```
+   Or run the wrapper task:
+   ```bash
+   task serve
    ```
    The server boots with:
    - Core collections defined in Go migration `migrations/1728216000_init_collections.go`
@@ -30,7 +38,7 @@ PocketBase v0.30 backend scaffolding for the School Locker Management SaaS. This
 
 1. Build the PocketBase binary:
    ```bash
-   go build -o pb-server ./cmd/pocketbase
+   go build -o pb-server .
    ```
 2. Use the provided `Dockerfile` (to be added in Milestone 2) or supply Coolify with:
    - Executable command: `./pb-server serve --http="0.0.0.0:8090" --migrationsDir ./migrations`
@@ -41,7 +49,7 @@ PocketBase v0.30 backend scaffolding for the School Locker Management SaaS. This
 
 ## Repository Structure
 
-- `cmd/pocketbase`: Go entrypoint with PocketBase CLI configuration
+- `main.go`: Go entrypoint with PocketBase CLI configuration
 - `internal/app/cronjobs`: Cron placeholder registrations for reservations, invoices, renewals, assignments
 - `internal/pbext/pdf`: Go extension stub targeting PocketBase Go extension API v0.30
 - `migrations`: Go migrations defining collections and seed data

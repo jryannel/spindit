@@ -1,0 +1,23 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Compile the PocketBase server binary
+    cmds:
+      - go build -o pb-server .
+
+  serve:
+    desc: Run PocketBase in dev mode with Go migrations
+    cmds:
+      - go run . serve --dev --migrationsDir ./migrations
+
+  test:
+    desc: Execute Go unit tests
+    cmds:
+      - go test ./...
+
+  tidy:
+    desc: Format and tidy the Go module
+    cmds:
+      - go fmt ./...
+      - go mod tidy
