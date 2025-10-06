@@ -51,3 +51,27 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 - Requires milestone 1 collections, access rules, and cron scaffolding.
 - Coordinate with design for Mantine theming and responsive layouts.
 - Confirm email delivery infrastructure (SMTP credentials, sender domain) before go-live testing.
+
+## Milestone 3 – Operations, Quality, and Launch Readiness
+**Goal:** Harden the platform with monitoring, janitor tooling, compliance reviews, and launch operations, culminating in a pilot-ready release.
+
+**Target Duration:** 3 weeks
+
+**Workstreams**
+- Implement janitor occupancy views (tabular + PDF export) with role-locked access and caching for large locker sets.
+- Add audit logging, GDPR data retention routines, and backup automation for PocketBase (SQLite snapshots, file assets).
+- Build monitoring dashboards (cron execution metrics, email success rates) and integrate alerting for failures.
+- Conduct localization QA, accessibility checks, and performance profiling for high-volume requests.
+- Run pilot onboarding: migrate legacy locker assignments, train staff/janitors, execute cutover runbook, and document support SOPs.
+
+**Acceptance Criteria**
+- Janitor portal delivers accurate occupancy visuals and exports without exposing parent PII.
+- Automated backups scheduled and tested for restore scenarios (including invoices PDFs).
+- Monitoring alerts raised on simulated cron failure and email bounce spikes.
+- QA sign-off covering localization, accessibility (WCAG AA), and load test (1k concurrent parents request flow).
+- Pilot checklist completed with sign-off from operations and school administration.
+
+**Dependencies & Notes**
+- Builds on fully functional workflows from Milestone 2.
+- Requires coordination with IT for backup storage and monitoring endpoints.
+- Schedule pilot during low-usage period before next school year cycle.
