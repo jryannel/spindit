@@ -25,7 +25,7 @@
 - Run `task test` (and `npm run build` to catch TS errors) before proposing changes.
 
 ## Commit & Pull Request Guidelines
-- Follow `<type>: <summary>` style (`feat(frontend): add parent portal`). Types in use: `feat`, `fix`, `docs`, `chore`, `refactor`.
+- Follow `<type>: <summary>` style (`feat(frontend): add user portal`). Types in use: `feat`, `fix`, `docs`, `chore`, `refactor`.
 - Keep commits focused; update `implementation_plan.md` checkboxes when closing a milestone task.
 - PRs should summarise intent, list verification steps (`go run . migrate`, `npm run build`), and mention any schema changes.
 

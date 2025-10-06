@@ -2,18 +2,24 @@ import { AppShell, Burger, Group, NavLink, ScrollArea } from '@mantine/core';
 import { IconKey, IconLayoutDashboard, IconLogout, IconTools } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { Outlet, useLocation, Link } from 'react-router-dom';
+import { useMemo } from 'react';
 import { useAuth } from '../../features/auth/AuthContext';
-
-const navItems = [
-  { label: 'Parent Dashboard', icon: IconLayoutDashboard, to: '/' },
-  { label: 'Staff Console', icon: IconTools, to: '/staff' },
-  { label: 'Requests', icon: IconKey, to: '/requests' },
-];
 
 export const AppLayout = () => {
   const [opened, { toggle }] = useDisclosure();
   const { logout, user } = useAuth();
   const location = useLocation();
+
+  const navItems = useMemo(() => {
+    const items = [{ label: 'Portal', icon: IconLayoutDashboard, to: '/' }];
+    if (user?.is_staff) {
+      items.push(
+        { label: 'Staff Console', icon: IconTools, to: '/staff' },
+        { label: 'Requests', icon: IconKey, to: '/requests' },
+      );
+    }
+    return items;
+  }, [user?.is_staff]);
 
   return (
     <AppShell
@@ -39,8 +45,8 @@ export const AppLayout = () => {
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="md" component={ScrollArea}>
-        {navItems.map((item) => (
-          <NavLink
+       {navItems.map((item) => (
+         <NavLink
             key={item.to}
             component={Link}
             to={item.to}

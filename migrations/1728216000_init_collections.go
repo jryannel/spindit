@@ -51,13 +51,17 @@ func init() {
 }
 
 func setAccessRules(app core.App) error {
+	if err := app.ReloadCachedCollections(); err != nil {
+		return err
+	}
+
 	requests, err := app.FindCollectionByNameOrId("requests")
 	if err != nil {
 		return err
 	}
-	requests.ListRule = types.Pointer("@request.auth.role = 'staff' || parent = @request.auth.id")
-	requests.ViewRule = types.Pointer("@request.auth.role = 'staff' || parent = @request.auth.id")
-	requests.CreateRule = types.Pointer("@request.auth.role = 'staff' || parent = @request.auth.id")
+	requests.ListRule = types.Pointer("@request.auth.is_staff = true || user.id = @request.auth.id")
+	requests.ViewRule = types.Pointer("@request.auth.is_staff = true || user.id = @request.auth.id")
+	requests.CreateRule = types.Pointer("@request.auth.is_staff = true || user.id = @request.auth.id")
 	if err := app.Save(requests); err != nil {
 		return err
 	}
@@ -66,8 +70,8 @@ func setAccessRules(app core.App) error {
 	if err != nil {
 		return err
 	}
-	invoices.ListRule = types.Pointer("@request.auth.role = 'staff' || request.parent = @request.auth.id")
-	invoices.ViewRule = types.Pointer("@request.auth.role = 'staff' || request.parent = @request.auth.id")
+	invoices.ListRule = types.Pointer("@request.auth.is_staff = true || request.user.id = @request.auth.id")
+	invoices.ViewRule = types.Pointer("@request.auth.is_staff = true || request.user.id = @request.auth.id")
 	if err := app.Save(invoices); err != nil {
 		return err
 	}
@@ -76,8 +80,8 @@ func setAccessRules(app core.App) error {
 	if err != nil {
 		return err
 	}
-	assignments.ListRule = types.Pointer("@request.auth.role = 'staff' || request.parent = @request.auth.id")
-	assignments.ViewRule = types.Pointer("@request.auth.role = 'staff' || request.parent = @request.auth.id")
+	assignments.ListRule = types.Pointer("@request.auth.is_staff = true || request.user.id = @request.auth.id")
+	assignments.ViewRule = types.Pointer("@request.auth.is_staff = true || request.user.id = @request.auth.id")
 	if err := app.Save(assignments); err != nil {
 		return err
 	}
@@ -86,8 +90,8 @@ func setAccessRules(app core.App) error {
 	if err != nil {
 		return err
 	}
-	renewals.ListRule = types.Pointer("@request.auth.role = 'staff' || assignment.request.parent = @request.auth.id")
-	renewals.ViewRule = types.Pointer("@request.auth.role = 'staff' || assignment.request.parent = @request.auth.id")
+	renewals.ListRule = types.Pointer("@request.auth.is_staff = true || assignment.request.user.id = @request.auth.id")
+	renewals.ViewRule = types.Pointer("@request.auth.is_staff = true || assignment.request.user.id = @request.auth.id")
 	if err := app.Save(renewals); err != nil {
 		return err
 	}
@@ -166,9 +170,9 @@ const collectionsJSON = `
     "indexes": [],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
-    "createRule": "@request.auth.role = 'staff'",
-    "updateRule": "@request.auth.role = 'staff'",
-    "deleteRule": "@request.auth.role = 'staff'",
+    "createRule": ".auth.is_staff = true",
+    "updateRule": ".auth.is_staff = true",
+    "deleteRule": ".auth.is_staff = true",
     "options": {}
   },
   {
@@ -237,16 +241,16 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role != ''",
-    "viewRule": "@request.auth.role != ''",
-    "createRule": "@request.auth.role = 'staff'",
-    "updateRule": "@request.auth.role = 'staff'",
-    "deleteRule": "@request.auth.role = 'staff'",
+    "listRule": ".auth.id != ''",
+    "viewRule": ".auth.id != ''",
+    "createRule": ".auth.is_staff = true",
+    "updateRule": ".auth.is_staff = true",
+    "deleteRule": ".auth.is_staff = true",
     "options": {}
   },
   {
     "id": "fq7fn8e5esohuql",
-    "name": "parents",
+    "name": "users",
     "type": "auth",
     "system": false,
     "schema": [
@@ -307,19 +311,13 @@ const collectionsJSON = `
       },
       {
         "system": false,
-        "name": "role",
-        "type": "select",
-        "required": true,
+        "name": "is_staff",
+        "type": "bool",
+        "required": false,
         "presentable": true,
         "unique": false,
         "options": {
-          "maxSelect": 1,
-          "values": [
-            "parent",
-            "staff",
-            "janitor"
-          ],
-          "defaultValue": "parent"
+          "default": false
         }
       }
     ],
@@ -349,7 +347,7 @@ const collectionsJSON = `
     "schema": [
       {
         "system": false,
-        "name": "parent",
+        "name": "user",
         "type": "relation",
         "required": true,
         "presentable": true,
@@ -468,8 +466,8 @@ const collectionsJSON = `
     "listRule": null,
     "viewRule": null,
     "createRule": null,
-    "updateRule": "@request.auth.role = 'staff'",
-    "deleteRule": "@request.auth.role = 'staff'",
+    "updateRule": ".auth.is_staff = true",
+    "deleteRule": ".auth.is_staff = true",
     "options": {}
   },
   {
@@ -526,11 +524,11 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff'",
-    "viewRule": "@request.auth.role = 'staff'",
-    "createRule": "@request.auth.role = 'staff'",
-    "updateRule": "@request.auth.role = 'staff'",
-    "deleteRule": "@request.auth.role = 'staff'",
+    "listRule": ".auth.is_staff = true",
+    "viewRule": ".auth.is_staff = true",
+    "createRule": ".auth.is_staff = true",
+    "updateRule": ".auth.is_staff = true",
+    "deleteRule": ".auth.is_staff = true",
     "options": {}
   },
   {
@@ -655,9 +653,9 @@ const collectionsJSON = `
     "indexes": [],
     "listRule": null,
     "viewRule": null,
-    "createRule": "@request.auth.role = 'staff'",
-    "updateRule": "@request.auth.role = 'staff'",
-    "deleteRule": "@request.auth.role = 'staff'",
+    "createRule": ".auth.is_staff = true",
+    "updateRule": ".auth.is_staff = true",
+    "deleteRule": ".auth.is_staff = true",
     "options": {}
   },
   {
@@ -716,9 +714,9 @@ const collectionsJSON = `
     "indexes": [],
     "listRule": null,
     "viewRule": null,
-    "createRule": "@request.auth.role = 'staff'",
-    "updateRule": "@request.auth.role = 'staff'",
-    "deleteRule": "@request.auth.role = 'staff'",
+    "createRule": ".auth.is_staff = true",
+    "updateRule": ".auth.is_staff = true",
+    "deleteRule": ".auth.is_staff = true",
     "options": {}
   },
   {
@@ -790,9 +788,9 @@ const collectionsJSON = `
     "indexes": [],
     "listRule": null,
     "viewRule": null,
-    "createRule": "@request.auth.role = 'staff'",
-    "updateRule": "@request.auth.role = 'staff'",
-    "deleteRule": "@request.auth.role = 'staff'",
+    "createRule": ".auth.is_staff = true",
+    "updateRule": ".auth.is_staff = true",
+    "deleteRule": ".auth.is_staff = true",
     "options": {}
   },
   {
@@ -895,11 +893,11 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff'",
-    "viewRule": "@request.auth.role = 'staff'",
-    "createRule": "@request.auth.role = 'staff'",
-    "updateRule": "@request.auth.role = 'staff'",
-    "deleteRule": "@request.auth.role = 'staff'",
+    "listRule": ".auth.is_staff = true",
+    "viewRule": ".auth.is_staff = true",
+    "createRule": ".auth.is_staff = true",
+    "updateRule": ".auth.is_staff = true",
+    "deleteRule": ".auth.is_staff = true",
     "options": {}
   },
   {
@@ -977,11 +975,11 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff'",
-    "viewRule": "@request.auth.role = 'staff'",
-    "createRule": "@request.auth.role = 'staff'",
-    "updateRule": "@request.auth.role = 'staff'",
-    "deleteRule": "@request.auth.role = 'staff'",
+    "listRule": ".auth.is_staff = true",
+    "viewRule": ".auth.is_staff = true",
+    "createRule": ".auth.is_staff = true",
+    "updateRule": ".auth.is_staff = true",
+    "deleteRule": ".auth.is_staff = true",
     "options": {}
   }
 ]

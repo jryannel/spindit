@@ -15,7 +15,7 @@ declare global {
 export const pb = new PocketBase(import.meta.env.VITE_PB_URL ?? 'http://127.0.0.1:8090');
 
 export const defaultCollections = {
-  parents: 'parents',
+  users: 'users',
   requests: 'requests',
   invoices: 'invoices',
 } as const;

@@ -64,6 +64,7 @@ PocketBase v0.30 backend scaffolding for the School Locker Management SaaS. This
 ## Functional Notes
 
 - Locker requests collect student name and class as part of each submission; no separate child profiles are stored to remain GDPR-compliant.
+- The `users` auth collection covers both families and staff; staff permissions are controlled via the `is_staff` boolean field.
 
 ## Next Steps
 

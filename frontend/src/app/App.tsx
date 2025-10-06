@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider } from '../features/auth/AuthContext';
 import { AppLayout } from './layouts/AppLayout';
 import { AuthGuard } from './layouts/AuthGuard';
+import { StaffGuard } from './layouts/StaffGuard';
 import { LoginPage } from './pages/LoginPage';
 import { ParentDashboard } from './pages/ParentDashboard';
 import { StaffConsole } from './pages/StaffConsole';
@@ -20,8 +21,10 @@ export const App = () => {
             <Route element={<AuthGuard />}>
               <Route element={<AppLayout />}>
                 <Route index element={<ParentDashboard />} />
-                <Route path="staff" element={<StaffConsole />} />
-                <Route path="requests" element={<RequestsPage />} />
+                <Route element={<StaffGuard />}>
+                  <Route path="staff" element={<StaffConsole />} />
+                  <Route path="requests" element={<RequestsPage />} />
+                </Route>
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -11,7 +11,7 @@ export interface LockerRequestInput {
 }
 
 export type LockerRequestRecord = RecordModel & LockerRequestInput & {
-  parent: string;
+  user: string;
   status: string;
   submitted_at: string;
   expand?: {
@@ -19,17 +19,17 @@ export type LockerRequestRecord = RecordModel & LockerRequestInput & {
   };
 };
 
-export async function listRequests(parentId: string): Promise<LockerRequestRecord[]> {
+export async function listRequests(userId: string): Promise<LockerRequestRecord[]> {
   return pb.collection('requests').getFullList<LockerRequestRecord>({
-    filter: `parent = "${parentId}"`,
+    filter: `user = "${userId}"`,
     sort: '-created',
     expand: 'preferred_zone',
   });
 }
 
-export async function createLockerRequest(parentId: string, data: LockerRequestInput): Promise<LockerRequestRecord> {
+export async function createLockerRequest(userId: string, data: LockerRequestInput): Promise<LockerRequestRecord> {
   return pb.collection('requests').create<LockerRequestRecord>({
-    parent: parentId,
+    user: userId,
     status: 'pending',
     submitted_at: data.submitted_at ?? new Date().toISOString(),
     ...data,

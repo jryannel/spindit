@@ -3,7 +3,7 @@ import type { RecordModel } from 'pocketbase';
 import { pb } from '../../lib/pocketbase';
 
 export type AuthUser = RecordModel & {
-  role?: string;
+  is_staff?: boolean;
   language?: string;
 };
 
@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      await pb.collection('parents').authWithPassword(email, password);
+      await pb.collection('users').authWithPassword(email, password);
       setUser(pb.authStore.model as AuthUser | null);
     } finally {
       setIsLoading(false);

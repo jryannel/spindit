@@ -32,17 +32,17 @@ invoices, and clear deadlines.
   **PDF Generation**   Go Extension in PocketBase (gofpdf)
   **Cron Jobs**        Native PocketBase Cron Engine (v0.30)
   **Database**         SQLite
-  **Auth**             PocketBase Auth Collection (`parents`) with Basic Auth
+**Auth**             PocketBase Auth Collection (`users`) with Basic Auth
   **Localization**     German + English via JSON i18n files
 
 ------------------------------------------------------------------------
 
 ### 3. Core Features
 
-#### 3.1 Parent Portal
+#### 3.1 Family Portal
 
--   Parents register (name, address, language, email).
--   Parents request lockers by providing student name and class inline (no persistent child profile stored).
+-   Users register (name, address, language, email). Staff toggle `is_staff` in the admin console; default users are families.
+-   Families request lockers by providing student name and class inline (no persistent child profile stored).
     -   Select school year (e.g., 2025/26)
     -   Choose zone preference
     -   Optionally enter desired locker number
@@ -57,20 +57,15 @@ invoices, and clear deadlines.
 -   Dashboard: active lockers, invoices, request status, and remaining
     time.
 
-#### 3.2 Backoffice (Staff)
+#### 3.2 Staff Console
 
 -   Overview of all requests, reservations, and invoices.
 -   Mark invoices as paid.
--   Automatic assignment and parent notification.
+-   Automatic assignment and user notification.
 -   Manage locker zones (A/B/C/D) with description and uploaded map.
 -   Configure school year, deadlines, and pricing.
 -   Manually release or reassign lockers if needed.
-
-#### 3.3 Janitor
-
--   Locker occupancy plan (tabular + optional PDF export).
--   View by zone with locker status (free/reserved/occupied).
--   Read-only access.
+-   Export occupancy reports for janitor teams (no dedicated janitor role).
 
 ------------------------------------------------------------------------
 
@@ -78,7 +73,7 @@ invoices, and clear deadlines.
 
 #### 4.1 Locker Request
 
-1.  Parent logs in → enters student name/class & school year → selects zone.
+1.  Family user logs in → enters student name/class & school year → selects zone.
 2.  System reserves a free locker.
 3.  Generates PDF invoice.
 4.  Sends email with invoice and payment deadline (e.g., 7 days).
@@ -112,10 +107,10 @@ invoices, and clear deadlines.
 
   **lockers**                Locker details       id, zone, status, note
 
-  **parents** *(auth)*       Parent accounts      name, address, phone,
-                                                  language
+  **users** *(auth)*         User accounts        name, address, phone,
+                                                  language, is_staff
 
-  **requests**               Locker requests      parent, student_name,
+  **requests**               Locker requests      user, student_name,
                                                   student_class,
                                                   school_year,
                                                   preferred_zone,
@@ -128,7 +123,7 @@ invoices, and clear deadlines.
                                                   amount_cents, currency,
                                                   status, pdf, paid_at
 
-  **assignments**            Final assignments    child, locker,
+  **assignments**            Final assignments    request, locker,
                                                   school_year, start_date,
                                                   end_date
 
@@ -177,7 +172,7 @@ invoices, and clear deadlines.
 -   Generated via **Go extension** in PocketBase.
 -   Template includes logo, school year, amount, IBAN, and reference
     number.
--   Language based on `parent.language`.
+-   Language based on `user.language`.
 -   PDF stored in `invoices.pdf`.
 -   Filename: `invoice_<number>.pdf`.
 
@@ -228,7 +223,7 @@ invoices, and clear deadlines.
 ### 10. Localization (DE/EN)
 
 -   JSON files `/locales/de.json` and `/locales/en.json`
--   Language based on `parent.language`
+-   Language based on `user.language`
 -   Emails and PDFs are bilingual
 
 ------------------------------------------------------------------------

@@ -14,17 +14,17 @@ interface RequestFormValues extends Omit<LockerRequestInput, 'submitted_at'> {
 
 export const RequestsSection = () => {
   const { user } = useAuth();
-  const parentId = user?.id ?? '';
+  const userId = user?.id ?? '';
   const [requests, setRequests] = useState<LockerRequestRecord[]>([]);
   const [zones, setZones] = useState<ZoneRecord[]>([]);
 
   const loadData = useMemo(
     () =>
       async () => {
-        if (!parentId) return;
+        if (!userId) return;
         try {
           const [reqs, zoneRecords] = await Promise.all([
-            listRequests(parentId),
+            listRequests(userId),
             listZones(),
           ]);
           setRequests(reqs);
@@ -38,7 +38,7 @@ export const RequestsSection = () => {
           });
         }
       },
-    [parentId],
+    [userId],
   );
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export const RequestsSection = () => {
   });
 
   const handleSubmit = form.onSubmit(async ({ submittedDate, ...values }) => {
-    if (!parentId) return;
+    if (!userId) return;
     try {
       const payload: LockerRequestInput = {
         ...values,
@@ -68,7 +68,7 @@ export const RequestsSection = () => {
         submitted_at: submittedDate?.toISOString(),
       };
 
-      await createLockerRequest(parentId, payload);
+      await createLockerRequest(userId, payload);
       showNotification({ color: 'green', title: 'Request sent', message: 'Locker request submitted.' });
       form.reset();
       form.setValues({
@@ -127,7 +127,7 @@ export const RequestsSection = () => {
               />
               <DateInput label="Submitted" {...form.getInputProps('submittedDate')} required />
             </Group>
-            <Button type="submit" leftSection={<IconPlus size={16} />} disabled={!parentId}>
+            <Button type="submit" leftSection={<IconPlus size={16} />} disabled={!userId}>
               Submit Request
             </Button>
           </Stack>

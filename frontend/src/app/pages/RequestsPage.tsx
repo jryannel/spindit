@@ -1,8 +1,8 @@
 import { Card, Table, Title } from '@mantine/core';
 
 const mockData = [
-  { id: 'REQ-1001', child: 'Emma S.', zone: 'A', status: 'reserved' },
-  { id: 'REQ-1002', child: 'Noah L.', zone: 'B', status: 'pending' },
+  { id: 'REQ-1001', student: 'Emma S.', zone: 'A', status: 'reserved' },
+  { id: 'REQ-1002', student: 'Noah L.', zone: 'B', status: 'pending' },
 ];
 
 export const RequestsPage = () => {
@@ -24,7 +24,7 @@ export const RequestsPage = () => {
           {mockData.map((row) => (
             <Table.Tr key={row.id}>
               <Table.Td>{row.id}</Table.Td>
-              <Table.Td>{row.child}</Table.Td>
+              <Table.Td>{row.student}</Table.Td>
               <Table.Td>{row.zone}</Table.Td>
               <Table.Td>{row.status}</Table.Td>
             </Table.Tr>

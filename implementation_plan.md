@@ -17,9 +17,9 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 **Target Duration:** 2 weeks
 
 **Workstreams**
-- [x] PocketBase project bootstrap (v0.30) with environment configuration, auth collection (`parents`), and locale settings.
-- [x] Define collections (`zones`, `lockers`, `parents`, `children`, `requests`, `reservations`, `invoices`, `assignments`, `renewals`, `email_queue`, `audit_logs`) including schema, relations, and validation rules from the PRD.
-- [x] Implement access rules for parents, staff, and janitor roles matching privacy requirements.
+- [x] PocketBase project bootstrap (v0.30) with environment configuration, unified auth collection (`users`), and locale settings.
+- [x] Define collections (`zones`, `lockers`, `users`, `requests`, `reservations`, `invoices`, `assignments`, `renewals`, `email_queue`, `audit_logs`) including schema, relations, and validation rules from the PRD.
+- [x] Implement access rules for family users and staff, including cron scaffolding.
 - [x] Create admin UI views and seed data scripts for locker zones and sample lockers.
 - [x] Scaffold cron job placeholders (`reservations.expire`, `invoices.reminders`, `renewals.open`, `assignments.close`) and register PDF Go extension compiled for PocketBase Go extension API v0.30 (no template yet).
 
@@ -40,16 +40,16 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 
 **Target Duration:** 4 weeks
 
-**Workstreams**
+- **Workstreams**
 - [x] Build Vite + React app shell with Mantine theme, routing, and authentication integration using PocketBase JS SDK.
-- [x] Implement parent portal core features: authentication, child management, locker request wizard, and request dashboard.
-- [ ] Add localization (DE/EN) and transactional email templates for parent flows.
+- [x] Implement user portal core features: authentication, inline student info locker request wizard, and request dashboard.
+- [ ] Add localization (DE/EN) and transactional email templates for family communications.
 - [ ] Develop server-side hooks for automatic reservation, invoice generation (integrating Go PDF template), and email dispatch queue.
 - [ ] Create staff backoffice views for requests, invoices, zones, and manual overrides; include filters, status transitions, and payment confirmation UI.
 - [ ] Wire cron jobs to execute business rules (reservation expiry, reminders) with logging and retry safeguards.
 
-**Acceptance Criteria**
-- [ ] Parent can request a locker, receive generated invoice PDF, and view status updates without admin intervention.
+- **Acceptance Criteria**
+- [ ] Family user can request a locker, receive generated invoice PDF, and view status updates without admin intervention.
 - [ ] Staff can mark invoices as paid, triggering locker assignment emails and locker status changes.
 - [ ] Localization toggle confirmed for UI, emails, and PDFs.
 - [ ] Automated emails stored in `email_queue` with delivery status; failures retried up to configured limit.
@@ -60,6 +60,7 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 - Coordinate with design for Mantine theming and responsive layouts.
 - Confirm email delivery infrastructure (SMTP credentials, sender domain) before go-live testing.
 - Student names/classes are captured inline in requests to avoid storing child profiles (GDPR compliance).
+- Single `users` auth collection differentiates staff via `is_staff`; ensure seeded accounts reflect this flag.
 
 ## Milestone 3 – Operations, Quality, and Launch Readiness
 **Goal:** Harden the platform with monitoring, janitor tooling, compliance reviews, and launch operations, culminating in a pilot-ready release.
@@ -74,10 +75,10 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 - [ ] Run pilot onboarding: migrate legacy locker assignments, train staff/janitors, execute cutover runbook, and document support SOPs.
 
 **Acceptance Criteria**
-- [ ] Janitor portal delivers accurate occupancy visuals and exports without exposing parent PII.
+- [ ] Staff occupancy views deliver accurate locker status without exposing unrelated user data.
 - [ ] Automated backups scheduled and tested for restore scenarios (including invoices PDFs).
 - [ ] Monitoring alerts raised on simulated cron failure and email bounce spikes.
-- [ ] QA sign-off covering localization, accessibility (WCAG AA), and load test (1k concurrent parents request flow).
+- [ ] QA sign-off covering localization, accessibility (WCAG AA), and load test (1k concurrent family request flow).
 - [ ] Pilot checklist completed with sign-off from operations and school administration.
 
 **Dependencies & Notes**
