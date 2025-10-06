@@ -1,9 +1,9 @@
 import type { RecordModel } from 'pocketbase';
 import { pb } from '../../lib/pocketbase';
-import type { ChildRecord } from '../children/api';
 
 export interface LockerRequestInput {
-  child: string;
+  student_name: string;
+  student_class: string;
   school_year: string;
   preferred_zone?: string;
   preferred_locker?: string;
@@ -15,7 +15,6 @@ export type LockerRequestRecord = RecordModel & LockerRequestInput & {
   status: string;
   submitted_at: string;
   expand?: {
-    child?: ChildRecord;
     preferred_zone?: ZoneRecord;
   };
 };
@@ -24,7 +23,7 @@ export async function listRequests(parentId: string): Promise<LockerRequestRecor
   return pb.collection('requests').getFullList<LockerRequestRecord>({
     filter: `parent = "${parentId}"`,
     sort: '-created',
-    expand: 'child,preferred_zone',
+    expand: 'preferred_zone',
   });
 }
 

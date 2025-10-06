@@ -59,6 +59,7 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 - Requires milestone 1 collections, access rules, and cron scaffolding.
 - Coordinate with design for Mantine theming and responsive layouts.
 - Confirm email delivery infrastructure (SMTP credentials, sender domain) before go-live testing.
+- Student names/classes are captured inline in requests to avoid storing child profiles (GDPR compliance).
 
 ## Milestone 3 – Operations, Quality, and Launch Readiness
 **Goal:** Harden the platform with monitoring, janitor tooling, compliance reviews, and launch operations, culminating in a pilot-ready release.

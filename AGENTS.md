@@ -2,7 +2,8 @@
 
 ## Project Structure & Module Organization
 - `main.go` hosts the PocketBase v0.30 entrypoint; Go migrations live in `migrations/` and register themselves via package import.
-- Backend extensions sit under `internal/` (`app/cronjobs` for cron stubs, `pbext/pdf` for Go extensions). Frontend code is not yet present—Milestone 2 will add `frontend/`.
+- Backend extensions sit under `internal/` (`app/cronjobs` for cron stubs, `pbext/pdf` for Go extensions). The React frontend lives in `frontend/`.
+- Student details (name/class) are captured inline on `requests`; there is no separate `children` collection to align with GDPR constraints.
 - Supporting docs include `implementation_plan.md` for milestone tracking and `README.md` for local setup.
 
 ## Build, Test, and Development Commands

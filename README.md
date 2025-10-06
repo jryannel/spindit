@@ -61,6 +61,10 @@ PocketBase v0.30 backend scaffolding for the School Locker Management SaaS. This
 - `frontend/`: Vite + React + Mantine application shell (Milestone 2)
 - `pb_hooks`: Reserved for future PocketBase hooks (empty during Milestone 1)
 
+## Functional Notes
+
+- Locker requests collect student name and class as part of each submission; no separate child profiles are stored to remain GDPR-compliant.
+
 ## Next Steps
 
 - Flesh out Go PDF extension and email queue processing (Milestone 2)

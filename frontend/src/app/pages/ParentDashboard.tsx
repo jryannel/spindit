@@ -1,26 +1,17 @@
-import { Tabs, Title } from '@mantine/core';
-import { ChildrenSection } from '../../features/children/components/ChildrenSection';
+import { Stack, Text, Title } from '@mantine/core';
 import { RequestsSection } from '../../features/requests/components/RequestsSection';
 
-export const ParentDashboard = () => {
-  return (
+export const ParentDashboard = () => (
+  <Stack gap="lg">
     <div>
-      <Title order={2} mb="lg">
+      <Title order={2} mb="xs">
         Parent Portal
       </Title>
-      <Tabs defaultValue="requests" keepMounted={false}>
-        <Tabs.List>
-          <Tabs.Tab value="requests">Locker Requests</Tabs.Tab>
-          <Tabs.Tab value="children">Children</Tabs.Tab>
-        </Tabs.List>
-
-        <Tabs.Panel value="requests" pt="md">
-          <RequestsSection />
-        </Tabs.Panel>
-        <Tabs.Panel value="children" pt="md">
-          <ChildrenSection />
-        </Tabs.Panel>
-      </Tabs>
+      <Text c="dimmed" size="sm">
+        Submit locker requests for each student by providing their name and class. We store only the details required to
+        process the request.
+      </Text>
     </div>
-  );
-};
+    <RequestsSection />
+  </Stack>
+);

@@ -23,7 +23,6 @@ func init() {
 			"vemsb4s051evn7f",
 			"jm440cli71sfxzb",
 			"qjz4kuz8hypkff2",
-			"ao1xywty980pk98",
 			"fq7fn8e5esohuql",
 			"y4wbfxylw6a5xoy",
 			"dhzkdxx71dfmt62",
@@ -183,9 +182,7 @@ const collectionsJSON = `
         }
       }
     ],
-    "indexes": [
-      "create unique index if not exists idx_lockers_zone_number on \"lockers\" (\"zone\", \"number\")"
-    ],
+    "indexes": [],
     "listRule": "@request.auth.role != ''",
     "viewRule": "@request.auth.role != ''",
     "createRule": "@request.auth.role = 'staff'",
@@ -291,64 +288,6 @@ const collectionsJSON = `
     }
   },
   {
-    "id": "ao1xywty980pk98",
-    "name": "children",
-    "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "parent",
-        "type": "relation",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "collectionId": "fq7fn8e5esohuql",
-          "cascadeDelete": true,
-          "minSelect": 1,
-          "maxSelect": 1,
-          "displayFields": [
-            "full_name"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "full_name",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 2,
-          "max": 120,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "class",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 1,
-          "max": 20,
-          "pattern": ""
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || @request.auth.id = parent.id",
-    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = parent.id",
-    "createRule": "@request.auth.id = parent.id",
-    "updateRule": "@request.auth.role = 'staff' || @request.auth.id = parent.id",
-    "deleteRule": "@request.auth.role = 'staff'",
-    "options": {}
-  },
-  {
     "id": "qjz4kuz8hypkff2",
     "name": "requests",
     "type": "base",
@@ -373,19 +312,28 @@ const collectionsJSON = `
       },
       {
         "system": false,
-        "name": "child",
-        "type": "relation",
+        "name": "student_name",
+        "type": "text",
         "required": true,
         "presentable": true,
         "unique": false,
         "options": {
-          "collectionId": "ao1xywty980pk98",
-          "cascadeDelete": false,
-          "minSelect": 1,
-          "maxSelect": 1,
-          "displayFields": [
-            "full_name"
-          ]
+          "min": 2,
+          "max": 120,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "name": "student_class",
+        "type": "text",
+        "required": true,
+        "presentable": true,
+        "unique": false,
+        "options": {
+          "min": 1,
+          "max": 20,
+          "pattern": ""
         }
       },
       {
@@ -463,9 +411,9 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || @request.auth.id = parent.id",
-    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = parent.id",
-    "createRule": "@request.auth.id = parent.id",
+    "listRule": "@request.auth.role = 'staff' || parent.id = @request.auth.id",
+    "viewRule": "@request.auth.role = 'staff' || parent.id = @request.auth.id",
+    "createRule": "parent.id = @request.auth.id",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
     "options": {}
@@ -523,9 +471,7 @@ const collectionsJSON = `
         }
       }
     ],
-    "indexes": [
-      "create index if not exists idx_reservations_locker on \"reservations\" (\"locker\")"
-    ],
+    "indexes": [],
     "listRule": "@request.auth.role = 'staff'",
     "viewRule": "@request.auth.role = 'staff'",
     "createRule": "@request.auth.role = 'staff'",
@@ -653,8 +599,8 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent.id",
-    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent.id",
+    "listRule": "@request.auth.role = 'staff' || request.parent.id = @request.auth.id",
+    "viewRule": "@request.auth.role = 'staff' || request.parent.id = @request.auth.id",
     "createRule": "@request.auth.role = 'staff'",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
@@ -713,9 +659,7 @@ const collectionsJSON = `
         }
       }
     ],
-    "indexes": [
-      "create unique index if not exists idx_assignments_locker_year on \"assignments\" (\"locker\")"
-    ],
+    "indexes": [],
     "listRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent.id",
     "viewRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent.id",
     "createRule": "@request.auth.role = 'staff'",
@@ -790,8 +734,8 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || @request.auth.id = assignment.request.parent.id",
-    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = assignment.request.parent.id",
+    "listRule": "@request.auth.role = 'staff' || assignment.request.parent.id = @request.auth.id",
+    "viewRule": "@request.auth.role = 'staff' || assignment.request.parent.id = @request.auth.id",
     "createRule": "@request.auth.role = 'staff'",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
@@ -896,9 +840,7 @@ const collectionsJSON = `
         }
       }
     ],
-    "indexes": [
-      "create index if not exists idx_email_queue_status on \"email_queue\" (\"status\")"
-    ],
+    "indexes": [],
     "listRule": "@request.auth.role = 'staff'",
     "viewRule": "@request.auth.role = 'staff'",
     "createRule": "@request.auth.role = 'staff'",
@@ -980,9 +922,7 @@ const collectionsJSON = `
         }
       }
     ],
-    "indexes": [
-      "create index if not exists idx_audit_logs_collection_record on \"audit_logs\" (\"collection\", \"record_id\")"
-    ],
+    "indexes": [],
     "listRule": "@request.auth.role = 'staff'",
     "viewRule": "@request.auth.role = 'staff'",
     "createRule": "@request.auth.role = 'staff'",

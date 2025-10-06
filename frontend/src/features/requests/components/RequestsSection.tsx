@@ -1,15 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Button,
-  Card,
-  Group,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { Button, Card, Group, Select, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { showNotification } from '@mantine/notifications';
@@ -17,8 +7,6 @@ import { IconPlus } from '@tabler/icons-react';
 import { useAuth } from '../../auth/AuthContext';
 import { createLockerRequest, listRequests, listZones } from '../api';
 import type { LockerRequestInput, LockerRequestRecord, ZoneRecord } from '../api';
-import type { ChildRecord } from '../../children/api';
-import { listChildren } from '../../children/api';
 
 interface RequestFormValues extends Omit<LockerRequestInput, 'submitted_at'> {
   submittedDate: Date | null;
@@ -28,7 +16,6 @@ export const RequestsSection = () => {
   const { user } = useAuth();
   const parentId = user?.id ?? '';
   const [requests, setRequests] = useState<LockerRequestRecord[]>([]);
-  const [children, setChildren] = useState<ChildRecord[]>([]);
   const [zones, setZones] = useState<ZoneRecord[]>([]);
 
   const loadData = useMemo(
@@ -36,13 +23,11 @@ export const RequestsSection = () => {
       async () => {
         if (!parentId) return;
         try {
-          const [reqs, kids, zoneRecords] = await Promise.all([
+          const [reqs, zoneRecords] = await Promise.all([
             listRequests(parentId),
-            listChildren(parentId),
             listZones(),
           ]);
           setRequests(reqs);
-          setChildren(kids);
           setZones(zoneRecords);
         } catch (error) {
           console.error(error);
@@ -62,7 +47,8 @@ export const RequestsSection = () => {
 
   const form = useForm<RequestFormValues>({
     initialValues: {
-      child: '',
+      student_name: '',
+      student_class: '',
       school_year: '2025/26',
       preferred_zone: '',
       preferred_locker: '',
@@ -73,14 +59,21 @@ export const RequestsSection = () => {
   const handleSubmit = form.onSubmit(async ({ submittedDate, ...values }) => {
     if (!parentId) return;
     try {
-      await createLockerRequest(parentId, {
+      const payload: LockerRequestInput = {
         ...values,
+        student_name: values.student_name.trim(),
+        student_class: values.student_class.trim(),
+        preferred_zone: values.preferred_zone || undefined,
+        preferred_locker: values.preferred_locker?.trim() || undefined,
         submitted_at: submittedDate?.toISOString(),
-      });
+      };
+
+      await createLockerRequest(parentId, payload);
       showNotification({ color: 'green', title: 'Request sent', message: 'Locker request submitted.' });
       form.reset();
       form.setValues({
-        child: '',
+        student_name: '',
+        student_class: '',
         school_year: '2025/26',
         preferred_zone: '',
         preferred_locker: '',
@@ -100,12 +93,17 @@ export const RequestsSection = () => {
           <Stack>
             <Title order={4}>Request a Locker</Title>
             <Group grow>
-              <Select
-                label="Student"
-                placeholder="Select child"
-                data={children.map((child) => ({ value: child.id, label: child.full_name }))}
+              <TextInput
+                label="Student name"
+                placeholder="e.g. Emma Schneider"
                 required
-                {...form.getInputProps('child')}
+                {...form.getInputProps('student_name')}
+              />
+              <TextInput
+                label="Class"
+                placeholder="e.g. 7A"
+                required
+                {...form.getInputProps('student_class')}
               />
               <TextInput
                 label="School year"
@@ -143,27 +141,29 @@ export const RequestsSection = () => {
         {requests.length === 0 ? (
           <Text c="dimmed">No requests yet. Submit a locker request to see history here.</Text>
         ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>ID</Table.Th>
-                <Table.Th>Student</Table.Th>
-                <Table.Th>Zone</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th>Submitted</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {requests.map((request) => (
-                <Table.Tr key={request.id}>
-                  <Table.Td>{request.id}</Table.Td>
-                  <Table.Td>{request.expand?.child?.full_name ?? request.child}</Table.Td>
-                  <Table.Td>{request.expand?.preferred_zone?.name ?? request.preferred_zone ?? '—'}</Table.Td>
-                  <Table.Td>{request.status}</Table.Td>
-                  <Table.Td>{new Date(request.submitted_at ?? request.created).toLocaleDateString()}</Table.Td>
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>ID</Table.Th>
+                  <Table.Th>Student</Table.Th>
+                  <Table.Th>Class</Table.Th>
+                  <Table.Th>Zone</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th>Submitted</Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
+              </Table.Thead>
+              <Table.Tbody>
+                {requests.map((request) => (
+                  <Table.Tr key={request.id}>
+                    <Table.Td>{request.id}</Table.Td>
+                    <Table.Td>{request.student_name}</Table.Td>
+                    <Table.Td>{request.student_class}</Table.Td>
+                    <Table.Td>{request.expand?.preferred_zone?.name ?? request.preferred_zone ?? '—'}</Table.Td>
+                    <Table.Td>{request.status}</Table.Td>
+                    <Table.Td>{new Date(request.submitted_at ?? request.created).toLocaleDateString()}</Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
           </Table>
         )}
       </Card>
