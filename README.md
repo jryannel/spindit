@@ -33,6 +33,11 @@ PocketBase v0.30 backend scaffolding for the School Locker Management SaaS. This
    - Stub cron jobs registered in `internal/app/cronjobs`
    - Placeholder PDF Go extension registered from `internal/pbext/pdf`
 3. Access the PocketBase admin UI at `http://127.0.0.1:8090/_/` and create a staff superuser.
+4. Launch the React frontend (in a separate terminal):
+   ```bash
+   task frontend:dev
+   ```
+   The app is served on `http://127.0.0.1:5173` and proxies requests directly to the PocketBase instance defined by `VITE_PB_URL` (defaults to `http://127.0.0.1:8090`).
 
 ## Coolify Deployment (Minimal Docker)
 
@@ -53,6 +58,7 @@ PocketBase v0.30 backend scaffolding for the School Locker Management SaaS. This
 - `internal/app/cronjobs`: Cron placeholder registrations for reservations, invoices, renewals, assignments
 - `internal/pbext/pdf`: Go extension stub targeting PocketBase Go extension API v0.30
 - `migrations`: Go migrations defining collections and seed data
+- `frontend/`: Vite + React + Mantine application shell (Milestone 2)
 - `pb_hooks`: Reserved for future PocketBase hooks (empty during Milestone 1)
 
 ## Next Steps

@@ -6,7 +6,7 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 | Milestone | Status | Target Duration | Notes |
 |-----------|--------|-----------------|-------|
 | Milestone 1 – PocketBase Foundations | ✅ Completed | 2 weeks | Backend scaffolding merged October 2025 |
-| Milestone 2 – Parent & Staff Workflows | 🔜 Not Started | 4 weeks | Begin after UI design handoff |
+| Milestone 2 – Parent & Staff Workflows | 🚧 In Progress | 4 weeks | React shell + auth scaffolding committed |
 | Milestone 3 – Operations & Launch | 🔜 Not Started | 3 weeks | Schedule post-M2 stabilization |
 
 ---
@@ -41,7 +41,7 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 **Target Duration:** 4 weeks
 
 **Workstreams**
-- [ ] Build Vite + React app shell with Mantine theme, routing, and authentication integration using PocketBase JS SDK.
+- [x] Build Vite + React app shell with Mantine theme, routing, and authentication integration using PocketBase JS SDK.
 - [ ] Implement parent portal features: registration/login, child management, locker request wizard, dashboard with requests/invoices, localization (DE/EN), and email templates.
 - [ ] Develop server-side hooks for automatic reservation, invoice generation (integrating Go PDF template), and email dispatch queue.
 - [ ] Create staff backoffice views for requests, invoices, zones, and manual overrides; include filters, status transitions, and payment confirmation UI.
