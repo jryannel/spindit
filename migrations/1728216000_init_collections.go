@@ -411,9 +411,9 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || parent.id = @request.auth.id",
-    "viewRule": "@request.auth.role = 'staff' || parent.id = @request.auth.id",
-    "createRule": "parent.id = @request.auth.id",
+    "listRule": "@request.auth.role = 'staff' || @request.auth.id = parent",
+    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = parent",
+    "createRule": "@request.auth.role = 'staff' || @request.auth.id = parent",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
     "options": {}
@@ -599,8 +599,8 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || request.parent.id = @request.auth.id",
-    "viewRule": "@request.auth.role = 'staff' || request.parent.id = @request.auth.id",
+    "listRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent",
+    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent",
     "createRule": "@request.auth.role = 'staff'",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
@@ -660,8 +660,8 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent.id",
-    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent.id",
+    "listRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent",
+    "viewRule": "@request.auth.role = 'staff' || @request.auth.id = request.parent",
     "createRule": "@request.auth.role = 'staff'",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
@@ -734,8 +734,8 @@ const collectionsJSON = `
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.role = 'staff' || assignment.request.parent.id = @request.auth.id",
-    "viewRule": "@request.auth.role = 'staff' || assignment.request.parent.id = @request.auth.id",
+    "listRule": "@request.auth.role = 'staff' || assignment.request.parent = @request.auth.id",
+    "viewRule": "@request.auth.role = 'staff' || assignment.request.parent = @request.auth.id",
     "createRule": "@request.auth.role = 'staff'",
     "updateRule": "@request.auth.role = 'staff'",
     "deleteRule": "@request.auth.role = 'staff'",
