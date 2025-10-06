@@ -27,3 +27,27 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 **Dependencies & Notes**
 - Requires final confirmation of school year configuration defaults.
 - Coordinate with infrastructure for hosting PocketBase (Docker compose or binary deployment).
+
+## Milestone 2 – Parent & Staff Workflows
+**Goal:** Deliver end-to-end locker request, reservation, invoicing, and payment confirmation flows across the React frontend and PocketBase hooks.
+
+**Target Duration:** 4 weeks
+
+**Workstreams**
+- Build Vite + React app shell with Mantine theme, routing, and authentication integration using PocketBase JS SDK.
+- Implement parent portal features: registration/login, child management, locker request wizard, dashboard with requests/invoices, localization (DE/EN), and email templates.
+- Develop server-side hooks for automatic reservation, invoice generation (integrating Go PDF template), and email dispatch queue.
+- Create staff backoffice views for requests, invoices, zones, and manual overrides; include filters, status transitions, and payment confirmation UI.
+- Wire cron jobs to execute business rules (reservation expiry, reminders) with logging and retry safeguards.
+
+**Acceptance Criteria**
+- Parent can request a locker, receive generated invoice PDF, and view status updates without admin intervention.
+- Staff can mark invoices as paid, triggering locker assignment emails and locker status changes.
+- Localization toggle confirmed for UI, emails, and PDFs.
+- Automated emails stored in `email_queue` with delivery status; failures retried up to configured limit.
+- End-to-end integration tested via scripted scenarios covering request → payment → assignment and expiration edge cases.
+
+**Dependencies & Notes**
+- Requires milestone 1 collections, access rules, and cron scaffolding.
+- Coordinate with design for Mantine theming and responsive layouts.
+- Confirm email delivery infrastructure (SMTP credentials, sender domain) before go-live testing.
