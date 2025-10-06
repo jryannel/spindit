@@ -27,6 +27,7 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 **Dependencies & Notes**
 - Requires final confirmation of school year configuration defaults.
 - Coordinate with infrastructure for hosting PocketBase (Docker compose or binary deployment).
+- Deploy PocketBase via Coolify with minimal Docker configuration to streamline hosting.
 
 ## Milestone 2 – Parent & Staff Workflows
 **Goal:** Deliver end-to-end locker request, reservation, invoicing, and payment confirmation flows across the React frontend and PocketBase hooks.
