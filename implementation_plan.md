@@ -42,7 +42,8 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 
 **Workstreams**
 - [x] Build Vite + React app shell with Mantine theme, routing, and authentication integration using PocketBase JS SDK.
-- [ ] Implement parent portal features: registration/login, child management, locker request wizard, dashboard with requests/invoices, localization (DE/EN), and email templates.
+- [x] Implement parent portal core features: authentication, child management, locker request wizard, and request dashboard.
+- [ ] Add localization (DE/EN) and transactional email templates for parent flows.
 - [ ] Develop server-side hooks for automatic reservation, invoice generation (integrating Go PDF template), and email dispatch queue.
 - [ ] Create staff backoffice views for requests, invoices, zones, and manual overrides; include filters, status transitions, and payment confirmation UI.
 - [ ] Wire cron jobs to execute business rules (reservation expiry, reminders) with logging and retry safeguards.
