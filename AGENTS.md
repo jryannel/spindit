@@ -1,32 +1,34 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `main.go` hosts the PocketBase v0.30 entrypoint; Go migrations live in `migrations/` and register themselves via package import.
-- Backend extensions sit under `internal/` (`app/cronjobs` for cron stubs, `pbext/pdf` for Go extensions). The React frontend lives in `frontend/`.
-- Student details (name/class) are captured inline on `requests`; there is no separate `children` collection to align with GDPR constraints.
-- Supporting docs include `implementation_plan.md` for milestone tracking and `README.md` for local setup.
+- `main.go` launches the PocketBase v0.30 backend; migrations live in `migrations/` and are applied with `go run . migrate`.
+- Backend extensions reside under `internal/` (`app/cronjobs` for cron stubs, `pbext/pdf` for future PDF hooks).
+- The Vite + React + Mantine SPA sits in `frontend/`; compiled assets land in `frontend/dist/` (ignored by Git).
+- `implementation_plan.md` tracks milestone checklists. `pocketbase-llms.txt` documents the PocketBase API for quick reference.
 
 ## Build, Test, and Development Commands
-- `task build` (or `go build -o pb-server .`) compiles the PocketBase server.
-- `task serve` runs `go run . serve --dev --migrationsDir ./migrations` for local development with Go migrations applied.
-- `task test` delegates to `go test ./...` across all Go packages.
-- `task tidy` formats and tidies the module (`go fmt ./...` + `go mod tidy`).
+- `task build` → `go build -o pb-server .` (backend binary).
+- `task serve` → runs PocketBase in dev mode with Go migrations.
+- `task frontend:dev` → starts the React dev server (`http://127.0.0.1:5173`).
+- `task frontend:build` → production React build (`npm run build`).
+- `task test` → `go test ./...` for backend packages. Use `npm run build` or `npm run test` for frontend checks when added.
+- `task tidy` → `go fmt ./...` + `go mod tidy` (run before commits touching Go code).
 
 ## Coding Style & Naming Conventions
-- Go sources follow `gofmt`; run `task tidy` before committing.
-- Name Go packages lowercase without underscores; exported identifiers use PascalCase, private helpers camelCase.
-- Placeholder frontend (when added) should follow React TypeScript conventions with PascalCase components and kebab-case route files.
+- Go code must pass `gofmt`; keep packages lowercase (`internal/app/cronjobs`).
+- React components use PascalCase files under `frontend/src/app/…`; hooks live in `frontend/src/features/*/hooks`.
+- Environment variables follow `VITE_*` for frontend (e.g., `VITE_PB_URL`).
 
 ## Testing Guidelines
-- Use Go’s standard `testing` package; place tests alongside sources as `_test.go` files.
-- Name tests `Test<Function>` and include table-driven cases when coverage is critical.
-- Run `task test` before submitting PRs; add regression tests for bugs.
+- Use Go’s built-in `testing` package; name tests `TestFunctionName` and colocate in `_test.go` files.
+- Frontend tests are not yet scaffolded—add Vitest with `npm run test` when UI logic stabilises.
+- Run `task test` (and `npm run build` to catch TS errors) before proposing changes.
 
 ## Commit & Pull Request Guidelines
-- Match existing commit style: `<type>: <concise summary>` (e.g., `feat: bootstrap pocketbase backend foundation`).
-- Keep commits scoped; document major changes in `implementation_plan.md` checkboxes when delivering milestone items.
-- PRs should summarize intent, note testing performed (`go test ./...`), and link relevant issues or milestone tasks. Include screenshots or logs if UI/cron behavior is affected.
+- Follow `<type>: <summary>` style (`feat(frontend): add parent portal`). Types in use: `feat`, `fix`, `docs`, `chore`, `refactor`.
+- Keep commits focused; update `implementation_plan.md` checkboxes when closing a milestone task.
+- PRs should summarise intent, list verification steps (`go run . migrate`, `npm run build`), and mention any schema changes.
 
 ## Security & Configuration Tips
-- Store PocketBase data under `pb_data/`; never commit secrets or SMTP credentials.
-- For Coolify deploys, run `pb-server serve --http="0.0.0.0:8090" --migrationsDir ./migrations` and mount persistent storage for `pb_data/`.
+- No child profiles are stored; locker requests capture student name/class inline for GDPR compliance.
+- Do not commit secrets; PocketBase data lives under `pb_data/` (ignored locally). Configure SMTP credentials via environment variables in deployment.
