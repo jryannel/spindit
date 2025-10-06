@@ -15,7 +15,7 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 - Define collections (`zones`, `lockers`, `parents`, `children`, `requests`, `reservations`, `invoices`, `assignments`, `renewals`, `email_queue`, `audit_logs`) including schema, relations, and validation rules from the PRD.
 - Implement access rules for parents, staff, and janitor roles matching privacy requirements.
 - Create admin UI views and seed data scripts for locker zones and sample lockers.
-- Scaffold cron job placeholders (`reservations.expire`, `invoices.reminders`, `renewals.open`, `assignments.close`) and register Go extension for PDF generation (no template yet).
+- Scaffold cron job placeholders (`reservations.expire`, `invoices.reminders`, `renewals.open`, `assignments.close`) and register PDF Go extension compiled for PocketBase Go extension API v0.30 (no template yet).
 
 **Acceptance Criteria**
 - Collections created with required fields, indexes, and relation integrity enforced.
