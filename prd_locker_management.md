@@ -41,7 +41,7 @@ invoices, and clear deadlines.
 
 #### 3.1 Family Portal
 
--   Users register (name, address, language, email). Staff toggle `is_staff` in the admin console; default users are families.
+-   Families register (name, address, language, email). Staff toggle `is_staff` in the admin console; default users are families.
 -   Families request lockers by providing student name and class inline (no persistent child profile stored).
     -   Select school year (e.g., 2025/26)
     -   Choose zone preference
@@ -52,7 +52,7 @@ invoices, and clear deadlines.
     -   Sends an email with payment information.
 -   After payment is marked by staff:
     -   Locker is permanently assigned.
-    -   Parent receives final locker number via email.
+    -   family receives final locker number via email.
 -   Renewal notifications are sent each spring.
 -   Dashboard: active lockers, invoices, request status, and remaining
     time.
@@ -91,7 +91,7 @@ invoices, and clear deadlines.
 #### 4.3 Renewal
 
 -   In spring (e.g., March), cronjob opens renewal window.
--   Parents with active lockers get email to renew.
+-   Families with active lockers get email to renew.
 -   Renewal creates a new invoice for the next year.
 -   After renewal deadline → lockers are released automatically.
 

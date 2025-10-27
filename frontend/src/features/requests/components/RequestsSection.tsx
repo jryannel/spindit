@@ -1,171 +1,206 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Group, Select, Stack, Table, Text, TextInput, Title } from '@mantine/core';
-import { DateInput } from '@mantine/dates';
-import { useForm } from '@mantine/form';
+import { Accordion, Badge, Button, Card, Group, Loader, Stack, Table, Text, Title } from '@mantine/core';
+import { modals } from '@mantine/modals';
+import { useEffect } from 'react';
 import { showNotification } from '@mantine/notifications';
-import { IconPlus } from '@tabler/icons-react';
-import { useAuth } from '../../auth/AuthContext';
-import { createLockerRequest, listRequests, listZones } from '../api';
-import type { LockerRequestInput, LockerRequestRecord, ZoneRecord } from '../api';
+import { IconClipboardPlus } from '@tabler/icons-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../auth';
+import { type LockerRecord, type LockerRequestRecord } from '../api';
+import { useCancelRequestMutation, useUserAssignmentsQuery, useUserRequestsQuery } from '../hooks';
 
-interface RequestFormValues extends Omit<LockerRequestInput, 'submitted_at'> {
-  submittedDate: Date | null;
-}
+const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : '—');
 
 export const RequestsSection = () => {
   const { user } = useAuth();
-  const userId = user?.id ?? '';
-  const [requests, setRequests] = useState<LockerRequestRecord[]>([]);
-  const [zones, setZones] = useState<ZoneRecord[]>([]);
+  const userId = user?.id ?? null;
+  const cancelMutation = useCancelRequestMutation();
+  const {
+    data: requests = [],
+    isLoading: isRequestsLoading,
+    isFetching: isRequestsFetching,
+    error: requestsError,
+  } = useUserRequestsQuery(userId);
+  const {
+    data: assignments = [],
+    isLoading: isAssignmentsLoading,
+    isFetching: isAssignmentsFetching,
+    error: assignmentsError,
+  } = useUserAssignmentsQuery(userId);
 
-  const loadData = useMemo(
-    () =>
-      async () => {
-        if (!userId) return;
+  const assignmentsLoading = isAssignmentsLoading || isAssignmentsFetching;
+  const requestsLoading = isRequestsLoading || isRequestsFetching;
+
+  const handleCancelRequest = (request: LockerRequestRecord) => {
+    if (!userId) return;
+    modals.openConfirmModal({
+      title: 'Cancel locker request?',
+      centered: true,
+      children: (
+        <Text size="sm">
+          Cancelling will remove this request from processing. You can submit a new request at any time.
+        </Text>
+      ),
+      labels: { confirm: 'Cancel request', cancel: 'Keep request' },
+      confirmProps: { color: 'red', loading: cancelMutation.isPending },
+      onConfirm: async () => {
         try {
-          const [reqs, zoneRecords] = await Promise.all([
-            listRequests(userId),
-            listZones(),
-          ]);
-          setRequests(reqs);
-          setZones(zoneRecords);
+          await cancelMutation.mutateAsync({ userId, requestId: request.id });
+          showNotification({
+            color: 'green',
+            title: 'Request cancelled',
+            message: 'Your locker request has been cancelled.',
+          });
         } catch (error) {
           console.error(error);
           showNotification({
             color: 'red',
-            title: 'Load error',
-            message: 'Unable to load requests at this time.',
+            title: 'Cancel failed',
+            message: 'Unable to cancel the request right now.',
           });
         }
       },
-    [userId],
-  );
+    });
+  };
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
-
-  const form = useForm<RequestFormValues>({
-    initialValues: {
-      student_name: '',
-      student_class: '',
-      school_year: '2025/26',
-      preferred_zone: '',
-      preferred_locker: '',
-      submittedDate: new Date(),
-    },
-  });
-
-  const handleSubmit = form.onSubmit(async ({ submittedDate, ...values }) => {
-    if (!userId) return;
-    try {
-      const payload: LockerRequestInput = {
-        ...values,
-        student_name: values.student_name.trim(),
-        student_class: values.student_class.trim(),
-        preferred_zone: values.preferred_zone || undefined,
-        preferred_locker: values.preferred_locker?.trim() || undefined,
-        submitted_at: submittedDate?.toISOString(),
-      };
-
-      await createLockerRequest(userId, payload);
-      showNotification({ color: 'green', title: 'Request sent', message: 'Locker request submitted.' });
-      form.reset();
-      form.setValues({
-        student_name: '',
-        student_class: '',
-        school_year: '2025/26',
-        preferred_zone: '',
-        preferred_locker: '',
-        submittedDate: new Date(),
+    if (requestsError) {
+      console.error(requestsError);
+      showNotification({
+        color: 'red',
+        title: 'Load failed',
+        message: 'Unable to fetch locker requests.',
       });
-      await loadData();
-    } catch (error) {
-      console.error(error);
-      showNotification({ color: 'red', title: 'Submit error', message: 'Unable to submit request right now.' });
     }
-  });
+  }, [requestsError]);
+
+  useEffect(() => {
+    if (assignmentsError) {
+      console.error(assignmentsError);
+      showNotification({
+        color: 'red',
+        title: 'Load failed',
+        message: 'Unable to fetch locker assignments.',
+      });
+    }
+  }, [assignmentsError]);
 
   return (
     <Stack gap="lg">
       <Card withBorder>
-        <form onSubmit={handleSubmit}>
-          <Stack>
-            <Title order={4}>Request a Locker</Title>
-            <Group grow>
-              <TextInput
-                label="Student name"
-                placeholder="e.g. Emma Schneider"
-                required
-                {...form.getInputProps('student_name')}
-              />
-              <TextInput
-                label="Class"
-                placeholder="e.g. 7A"
-                required
-                {...form.getInputProps('student_class')}
-              />
-              <TextInput
-                label="School year"
-                placeholder="2025/26"
-                required
-                {...form.getInputProps('school_year')}
-              />
-              <Select
-                label="Preferred zone"
-                placeholder="Optional"
-                data={zones.map((zone) => ({ value: zone.id, label: zone.name }))}
-                clearable
-                {...form.getInputProps('preferred_zone')}
-              />
-            </Group>
-            <Group grow>
-              <TextInput
-                label="Preferred locker number"
-                placeholder="Optional"
-                {...form.getInputProps('preferred_locker')}
-              />
-              <DateInput label="Submitted" {...form.getInputProps('submittedDate')} required />
-            </Group>
-            <Button type="submit" leftSection={<IconPlus size={16} />} disabled={!userId}>
-              Submit Request
+        <Stack gap="sm">
+          <Group justify="space-between">
+            <Title order={4}>My Lockers</Title>
+            <Button component={Link} to="/app/request" leftSection={<IconClipboardPlus size={16} />}>
+              Request a Locker
             </Button>
-          </Stack>
-        </form>
-      </Card>
-
-      <Card withBorder>
-        <Title order={4} mb="sm">
-          Request History
-        </Title>
-        {requests.length === 0 ? (
-          <Text c="dimmed">No requests yet. Submit a locker request to see history here.</Text>
-        ) : (
+          </Group>
+          {assignmentsLoading ? (
+            <Group justify="center" py="md">
+              <Loader size="sm" />
+            </Group>
+          ) : assignments.length === 0 ? (
+            <Text c="dimmed">No lockers assigned yet. Locker details will appear here after approval.</Text>
+          ) : (
             <Table striped highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>ID</Table.Th>
-                  <Table.Th>Student</Table.Th>
-                  <Table.Th>Class</Table.Th>
+                  <Table.Th>Locker</Table.Th>
                   <Table.Th>Zone</Table.Th>
                   <Table.Th>Status</Table.Th>
-                  <Table.Th>Submitted</Table.Th>
+                  <Table.Th>Assigned</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {requests.map((request) => (
-                  <Table.Tr key={request.id}>
-                    <Table.Td>{request.id}</Table.Td>
-                    <Table.Td>{request.student_name}</Table.Td>
-                    <Table.Td>{request.student_class}</Table.Td>
-                    <Table.Td>{request.expand?.preferred_zone?.name ?? request.preferred_zone ?? '—'}</Table.Td>
-                    <Table.Td>{request.status}</Table.Td>
-                    <Table.Td>{new Date(request.submitted_at ?? request.created).toLocaleDateString()}</Table.Td>
-                  </Table.Tr>
-                ))}
+                {assignments.map((assignment) => {
+                  const locker = assignment.expand?.locker as LockerRecord | undefined;
+                  const zone = locker?.expand?.zone ?? assignment.expand?.request?.expand?.preferred_zone;
+                  return (
+                    <Table.Tr key={assignment.id}>
+                      <Table.Td>{locker?.number ?? '—'}</Table.Td>
+                      <Table.Td>{zone?.name ?? '—'}</Table.Td>
+                      <Table.Td>
+                        <Badge color={locker?.status === 'occupied' ? 'blue' : 'gray'}>{locker?.status ?? 'unknown'}</Badge>
+                      </Table.Td>
+                      <Table.Td>{formatDate(assignment.assigned_at)}</Table.Td>
+                    </Table.Tr>
+                  );
+                })}
               </Table.Tbody>
-          </Table>
-        )}
+            </Table>
+          )}
+        </Stack>
+      </Card>
+
+      <Card withBorder>
+        <Stack gap="sm">
+          <Title order={4}>My Requests</Title>
+          {requestsLoading ? (
+            <Group justify="center" py="md">
+              <Loader size="sm" />
+            </Group>
+          ) : requests.length === 0 ? (
+            <Text c="dimmed">No requests yet. Use the “Request a Locker” button to start the process.</Text>
+          ) : (
+            <Accordion multiple>
+              {requests.map((request) => (
+                <Accordion.Item value={request.id} key={request.id}>
+                  <Accordion.Control>
+                    <Group gap="md" wrap="nowrap">
+                      <Stack gap={0}>
+                        <Text fw={600}>{request.student_name}</Text>
+                        <Text size="sm" c="dimmed">
+                          Class {request.student_class} · {request.school_year}
+                        </Text>
+                      </Stack>
+                      <Badge color={request.status === 'pending' ? 'yellow' : 'green'}>{request.status}</Badge>
+                      <Text size="sm" c="dimmed">
+                        Submitted {formatDate(request.submitted_at ?? request.created)}
+                      </Text>
+                    </Group>
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    <Stack gap="xs">
+                      <Group gap="lg" align="flex-start">
+                        <Stack gap={2}>
+                          <Text fw={600}>Requester</Text>
+                          <Text>{request.requester_name}</Text>
+                          <Text size="sm" c="dimmed">
+                            {request.requester_address}
+                          </Text>
+                          <Text size="sm" c="dimmed">
+                            {request.requester_phone}
+                          </Text>
+                        </Stack>
+                        <Stack gap={2}>
+                          <Text fw={600}>Preferences</Text>
+                          <Text size="sm">
+                            Zone: {request.expand?.preferred_zone?.name ?? request.preferred_zone ?? 'No preference'}
+                          </Text>
+                          <Text size="sm">Locker: {request.preferred_locker ?? 'No preference'}</Text>
+                        </Stack>
+                      </Group>
+                      <Text size="sm" c="dimmed">
+                        Request ID: {request.id}
+                      </Text>
+                      {['pending', 'reserved'].includes(request.status?.toLowerCase() ?? '') && (
+                        <Group justify="flex-end" mt="xs">
+                          <Button
+                            variant="light"
+                            color="red"
+                            onClick={() => handleCancelRequest(request)}
+                            loading={cancelMutation.isPending}
+                          >
+                            Cancel request
+                          </Button>
+                        </Group>
+                      )}
+                    </Stack>
+                  </Accordion.Panel>
+                </Accordion.Item>
+              ))}
+            </Accordion>
+          )}
+        </Stack>
       </Card>
     </Stack>
   );

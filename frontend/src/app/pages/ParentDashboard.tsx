@@ -8,8 +8,8 @@ export const ParentDashboard = () => (
         Parent Portal
       </Title>
       <Text c="dimmed" size="sm">
-        Submit locker requests for each student by providing their name and class. We store only the details required to
-        process the request.
+        Review your current lockers and submissions. When you are ready to request a new locker, use the button above the
+        table to provide your contact information and student preferences.
       </Text>
     </div>
     <RequestsSection />

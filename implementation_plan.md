@@ -17,7 +17,7 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 **Target Duration:** 2 weeks
 
 **Workstreams**
-- [x] PocketBase project bootstrap (v0.30) with environment configuration, unified auth collection (`users`), and locale settings.
+- [x] PocketBase project bootstrap (v0.30) with environment configuration, unified auth collection (extending `users`), and locale settings.
 - [x] Define collections (`zones`, `lockers`, `users`, `requests`, `reservations`, `invoices`, `assignments`, `renewals`, `email_queue`, `audit_logs`) including schema, relations, and validation rules from the PRD.
 - [x] Implement access rules for family users and staff, including cron scaffolding.
 - [x] Create admin UI views and seed data scripts for locker zones and sample lockers.
@@ -60,7 +60,9 @@ This plan breaks the School Locker Management SaaS into three sequential milesto
 - Coordinate with design for Mantine theming and responsive layouts.
 - Confirm email delivery infrastructure (SMTP credentials, sender domain) before go-live testing.
 - Student names/classes are captured inline in requests to avoid storing child profiles (GDPR compliance).
-- Single `users` auth collection differentiates staff via `is_staff`; ensure seeded accounts reflect this flag.
+- Extended `users` auth collection differentiates staff via `is_staff` while keeping profile fields optional until the family completes their account.
+- Request workflow collects requester contact details and lets families persist them to the profile for faster subsequent submissions.
+- Staff console exposes searchable, paginated CRUD shortcuts for users, requests, lockers, and zones, including bulk status actions.
 
 ## Milestone 3 – Operations, Quality, and Launch Readiness
 **Goal:** Harden the platform with monitoring, janitor tooling, compliance reviews, and launch operations, culminating in a pilot-ready release.

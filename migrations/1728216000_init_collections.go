@@ -1,7 +1,8 @@
 package migrations
 
 import (
-	"encoding/json"
+	"database/sql"
+	"errors"
 
 	"github.com/pocketbase/pocketbase/core"
 	pm "github.com/pocketbase/pocketbase/migrations"
@@ -10,12 +11,23 @@ import (
 
 func init() {
 	pm.Register(func(app core.App) error {
-		var collections []map[string]any
-		if err := json.Unmarshal([]byte(collectionsJSON), &collections); err != nil {
-			return err
+		creators := []func(core.App) error{
+			extendUsersCollection,
+			createZonesCollection,
+			createLockersCollection,
+			createRequestsCollection,
+			createReservationsCollection,
+			createInvoicesCollection,
+			createAssignmentsCollection,
+			createRenewalsCollection,
+			createEmailQueueCollection,
+			createAuditLogsCollection,
 		}
-		if err := app.ImportCollections(collections, false); err != nil {
-			return err
+
+		for _, create := range creators {
+			if err := create(app); err != nil {
+				return err
+			}
 		}
 
 		if err := setAccessRules(app); err != nil {
@@ -32,7 +44,6 @@ func init() {
 			"vemsb4s051evn7f",
 			"jm440cli71sfxzb",
 			"qjz4kuz8hypkff2",
-			"fq7fn8e5esohuql",
 			"y4wbfxylw6a5xoy",
 			"dhzkdxx71dfmt62",
 		}
@@ -40,14 +51,562 @@ func init() {
 		for _, id := range ids {
 			col, err := app.FindCollectionByNameOrId(id)
 			if err != nil {
-				continue
+				if errors.Is(err, sql.ErrNoRows) {
+					continue
+				}
+				return err
 			}
 			if err := app.Delete(col); err != nil {
 				return err
 			}
 		}
+
+		if users, err := app.FindCollectionByNameOrId("users"); err == nil {
+			for _, name := range []string{"full_name", "address", "phone", "language", "is_staff"} {
+				users.Fields.RemoveByName(name)
+			}
+			if err := app.Save(users); err != nil {
+				return err
+			}
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
 		return nil
 	})
+}
+
+func extendUsersCollection(app core.App) error {
+	users, err := app.FindCollectionByNameOrId("users")
+	if err != nil {
+		return err
+	}
+
+	ensureField := func(field core.Field) {
+		if existing := users.Fields.GetByName(field.GetName()); existing != nil {
+			users.Fields.RemoveByName(field.GetName())
+		}
+		users.Fields.Add(field)
+	}
+
+	ensureField(&core.TextField{
+		Name:        "full_name",
+		Presentable: true,
+		Required:    false,
+		Min:         2,
+		Max:         120,
+	})
+	ensureField(&core.TextField{
+		Name:     "address",
+		Required: false,
+		Min:      4,
+		Max:      200,
+	})
+	ensureField(&core.TextField{
+		Name:     "phone",
+		Required: false,
+		Max:      32,
+		Pattern:  `^[0-9+()\\s-]{7,}$`,
+	})
+	ensureField(&core.SelectField{
+		Name:        "language",
+		Presentable: true,
+		Required:    false,
+		Values:      []string{"de", "en"},
+		MaxSelect:   1,
+	})
+	ensureField(&core.BoolField{
+		Name:        "is_staff",
+		Presentable: true,
+	})
+
+	return app.Save(users)
+}
+
+func createZonesCollection(app core.App) error {
+	collection := core.NewBaseCollection("zones", "dhzkdxx71dfmt62")
+
+	collection.Fields.Add(&core.TextField{
+		Name:        "name",
+		Presentable: true,
+		Required:    true,
+		Min:         2,
+		Max:         64,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name: "description",
+		Max:  500,
+	})
+	collection.Fields.Add(&core.JSONField{
+		Name:    "class_tags",
+		MaxSize: 2000,
+	})
+	collection.Fields.Add(&core.FileField{
+		Name:      "map_image",
+		MaxSelect: 1,
+		MaxSize:   5 * 1024 * 1024,
+		MimeTypes: []string{"image/png", "image/jpeg", "application/pdf"},
+		Thumbs:    []string{"200x200", "400x400"},
+	})
+
+	rule := "@request.auth.id != ''"
+	staffRule := "@request.auth.is_staff = true"
+	collection.ListRule = types.Pointer(rule)
+	collection.ViewRule = types.Pointer(rule)
+	collection.CreateRule = types.Pointer(staffRule)
+	collection.UpdateRule = types.Pointer(staffRule)
+	collection.DeleteRule = types.Pointer(staffRule)
+
+	return saveCollection(app, collection)
+}
+
+func createLockersCollection(app core.App) error {
+	collection := core.NewBaseCollection("lockers", "y4wbfxylw6a5xoy")
+
+	minLockerNumber := 1.0
+	collection.Fields.Add(&core.NumberField{
+		Name:        "number",
+		Presentable: true,
+		Required:    true,
+		Min:         &minLockerNumber,
+		OnlyInt:     true,
+	})
+	collection.Fields.Add(&core.RelationField{
+		Name:          "zone",
+		Presentable:   true,
+		Required:      true,
+		CollectionId:  "dhzkdxx71dfmt62",
+		CascadeDelete: false,
+		MinSelect:     1,
+		MaxSelect:     1,
+	})
+	collection.Fields.Add(&core.SelectField{
+		Name:        "status",
+		Presentable: true,
+		Required:    true,
+		Values:      []string{"free", "reserved", "occupied", "maintenance"},
+		MaxSelect:   1,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name: "note",
+		Max:  400,
+	})
+
+	rule := "@request.auth.id != ''"
+	staffRule := "@request.auth.is_staff = true"
+	collection.ListRule = types.Pointer(rule)
+	collection.ViewRule = types.Pointer(rule)
+	collection.CreateRule = types.Pointer(staffRule)
+	collection.UpdateRule = types.Pointer(staffRule)
+	collection.DeleteRule = types.Pointer(staffRule)
+
+	return saveCollection(app, collection)
+}
+
+func createRequestsCollection(app core.App) error {
+	collection := core.NewBaseCollection("requests", "qjz4kuz8hypkff2")
+
+	collection.Fields.Add(&core.RelationField{
+		Name:          "user",
+		Presentable:   true,
+		Required:      true,
+		CollectionId:  "_pb_users_auth_",
+		CascadeDelete: false,
+		MinSelect:     1,
+		MaxSelect:     1,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "requester_name",
+		Presentable: true,
+		Required:    true,
+		Min:         2,
+		Max:         120,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:     "requester_address",
+		Required: true,
+		Min:      4,
+		Max:      200,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:     "requester_phone",
+		Required: true,
+		Pattern:  `^[0-9+()\\s-]{7,}$`,
+		Max:      32,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "student_name",
+		Presentable: true,
+		Required:    true,
+		Min:         2,
+		Max:         120,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "student_class",
+		Presentable: true,
+		Required:    true,
+		Min:         1,
+		Max:         20,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "school_year",
+		Presentable: true,
+		Required:    true,
+		Min:         7,
+		Max:         9,
+		Pattern:     `^[0-9]{4}/[0-9]{2}$`,
+	})
+	collection.Fields.Add(&core.RelationField{
+		Name:          "preferred_zone",
+		Presentable:   true,
+		CollectionId:  "dhzkdxx71dfmt62",
+		CascadeDelete: false,
+		MaxSelect:     1,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name: "preferred_locker",
+		Max:  10,
+	})
+	collection.Fields.Add(&core.SelectField{
+		Name:        "status",
+		Presentable: true,
+		Required:    true,
+		Values:      []string{"pending", "reserved", "expired", "assigned", "cancelled"},
+		MaxSelect:   1,
+	})
+	collection.Fields.Add(&core.DateField{
+		Name:        "submitted_at",
+		Presentable: true,
+		Required:    true,
+	})
+
+	staffRule := "@request.auth.is_staff = true"
+	collection.UpdateRule = types.Pointer(staffRule)
+	collection.DeleteRule = types.Pointer(staffRule)
+
+	return saveCollection(app, collection)
+}
+
+func createReservationsCollection(app core.App) error {
+	collection := core.NewBaseCollection("reservations", "jm440cli71sfxzb")
+
+	collection.Fields.Add(&core.RelationField{
+		Name:          "request",
+		Presentable:   true,
+		Required:      true,
+		CollectionId:  "qjz4kuz8hypkff2",
+		CascadeDelete: true,
+		MinSelect:     1,
+		MaxSelect:     1,
+	})
+	collection.Fields.Add(&core.RelationField{
+		Name:          "locker",
+		Presentable:   true,
+		Required:      true,
+		CollectionId:  "y4wbfxylw6a5xoy",
+		CascadeDelete: false,
+		MinSelect:     1,
+		MaxSelect:     1,
+	})
+	collection.Fields.Add(&core.DateField{
+		Name:        "expires_at",
+		Presentable: true,
+		Required:    true,
+	})
+
+	staffRule := "@request.auth.is_staff = true"
+	collection.ListRule = types.Pointer(staffRule)
+	collection.ViewRule = types.Pointer(staffRule)
+	collection.CreateRule = types.Pointer(staffRule)
+	collection.UpdateRule = types.Pointer(staffRule)
+	collection.DeleteRule = types.Pointer(staffRule)
+
+	return saveCollection(app, collection)
+}
+
+func createInvoicesCollection(app core.App) error {
+	collection := core.NewBaseCollection("invoices", "vemsb4s051evn7f")
+
+	collection.Fields.Add(&core.RelationField{
+		Name:          "request",
+		Presentable:   true,
+		Required:      true,
+		CollectionId:  "qjz4kuz8hypkff2",
+		CascadeDelete: true,
+		MinSelect:     1,
+		MaxSelect:     1,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "number",
+		Presentable: true,
+		Required:    true,
+		Min:         4,
+		Max:         32,
+		Pattern:     `^INV-[0-9]{6}$`,
+	})
+	minAmount := 0.0
+	collection.Fields.Add(&core.NumberField{
+		Name:        "amount",
+		Presentable: true,
+		Required:    true,
+		Min:         &minAmount,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "currency",
+		Presentable: true,
+		Required:    true,
+		Min:         3,
+		Max:         3,
+		Pattern:     `^[A-Z]{3}$`,
+	})
+	collection.Fields.Add(&core.SelectField{
+		Name:        "status",
+		Presentable: true,
+		Required:    true,
+		Values:      []string{"draft", "sent", "paid", "cancelled"},
+		MaxSelect:   1,
+	})
+	collection.Fields.Add(&core.DateField{
+		Name:        "due_at",
+		Presentable: true,
+		Required:    true,
+	})
+	collection.Fields.Add(&core.DateField{
+		Name:        "paid_at",
+		Presentable: true,
+	})
+	collection.Fields.Add(&core.FileField{
+		Name:        "pdf",
+		Presentable: true,
+		MaxSelect:   1,
+		MaxSize:     10 * 1024 * 1024,
+		MimeTypes:   []string{"application/pdf"},
+		Protected:   true,
+	})
+
+	staffRule := "@request.auth.is_staff = true"
+	collection.CreateRule = types.Pointer(staffRule)
+	collection.UpdateRule = types.Pointer(staffRule)
+	collection.DeleteRule = types.Pointer(staffRule)
+
+	return saveCollection(app, collection)
+}
+
+func createAssignmentsCollection(app core.App) error {
+	collection := core.NewBaseCollection("assignments", "i0zawt7irmi5rgf")
+
+	collection.Fields.Add(&core.RelationField{
+		Name:          "request",
+		Presentable:   true,
+		Required:      true,
+		CollectionId:  "qjz4kuz8hypkff2",
+		CascadeDelete: true,
+		MinSelect:     1,
+		MaxSelect:     1,
+	})
+	collection.Fields.Add(&core.RelationField{
+		Name:          "locker",
+		Presentable:   true,
+		Required:      true,
+		CollectionId:  "y4wbfxylw6a5xoy",
+		CascadeDelete: false,
+		MinSelect:     1,
+		MaxSelect:     1,
+	})
+	collection.Fields.Add(&core.DateField{
+		Name:        "assigned_at",
+		Presentable: true,
+		Required:    true,
+	})
+
+	staffRule := "@request.auth.is_staff = true"
+	collection.CreateRule = types.Pointer(staffRule)
+	collection.UpdateRule = types.Pointer(staffRule)
+	collection.DeleteRule = types.Pointer(staffRule)
+
+	return saveCollection(app, collection)
+}
+
+func createRenewalsCollection(app core.App) error {
+	collection := core.NewBaseCollection("renewals", "1csagpg9ce4ojad")
+
+	collection.Fields.Add(&core.RelationField{
+		Name:          "assignment",
+		Presentable:   true,
+		Required:      true,
+		CollectionId:  "i0zawt7irmi5rgf",
+		CascadeDelete: true,
+		MinSelect:     1,
+		MaxSelect:     1,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "school_year",
+		Presentable: true,
+		Required:    true,
+		Min:         7,
+		Max:         9,
+		Pattern:     `^[0-9]{4}/[0-9]{2}$`,
+	})
+	collection.Fields.Add(&core.SelectField{
+		Name:        "status",
+		Presentable: true,
+		Required:    true,
+		Values:      []string{"pending", "confirmed", "expired", "cancelled"},
+		MaxSelect:   1,
+	})
+	collection.Fields.Add(&core.DateField{
+		Name:        "renewed_at",
+		Presentable: true,
+	})
+
+	staffRule := "@request.auth.is_staff = true"
+	collection.CreateRule = types.Pointer(staffRule)
+	collection.UpdateRule = types.Pointer(staffRule)
+	collection.DeleteRule = types.Pointer(staffRule)
+
+	return saveCollection(app, collection)
+}
+
+func createEmailQueueCollection(app core.App) error {
+	collection := core.NewBaseCollection("email_queue", "wd8z33xdvc1uwe6")
+
+	collection.Fields.Add(&core.TextField{
+		Name:        "recipient",
+		Presentable: true,
+		Required:    true,
+		Min:         3,
+		Max:         255,
+		Pattern:     `^[^@\\n]+@[^@\\n]+\\.[^@\\n]+$`,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "subject",
+		Presentable: true,
+		Required:    true,
+		Min:         1,
+		Max:         200,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "template",
+		Presentable: true,
+		Required:    true,
+		Min:         2,
+		Max:         80,
+		Pattern:     `^[a-z0-9_]+$`,
+	})
+	collection.Fields.Add(&core.JSONField{
+		Name:    "payload",
+		MaxSize: 4000,
+	})
+	collection.Fields.Add(&core.SelectField{
+		Name:        "status",
+		Presentable: true,
+		Required:    true,
+		Values:      []string{"pending", "sending", "sent", "failed"},
+		MaxSelect:   1,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name: "error",
+		Max:  500,
+	})
+	collection.Fields.Add(&core.DateField{
+		Name:        "sent_at",
+		Presentable: true,
+	})
+
+	staffRule := "@request.auth.is_staff = true"
+	collection.ListRule = types.Pointer(staffRule)
+	collection.ViewRule = types.Pointer(staffRule)
+	collection.CreateRule = types.Pointer(staffRule)
+	collection.UpdateRule = types.Pointer(staffRule)
+	collection.DeleteRule = types.Pointer(staffRule)
+
+	return saveCollection(app, collection)
+}
+
+func createAuditLogsCollection(app core.App) error {
+	collection := core.NewBaseCollection("audit_logs", "dpnhs2xr3by2ue8")
+
+	collection.Fields.Add(&core.RelationField{
+		Name:          "actor",
+		Presentable:   true,
+		CollectionId:  "_pb_users_auth_",
+		CascadeDelete: false,
+		MaxSelect:     1,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "action",
+		Presentable: true,
+		Required:    true,
+		Min:         2,
+		Max:         120,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "collection",
+		Presentable: true,
+		Required:    true,
+		Min:         1,
+		Max:         64,
+	})
+	collection.Fields.Add(&core.TextField{
+		Name:        "record_id",
+		Presentable: true,
+		Required:    true,
+		Min:         15,
+		Max:         15,
+		Pattern:     `^[a-z0-9]{15}$`,
+	})
+	collection.Fields.Add(&core.JSONField{
+		Name:    "diff",
+		MaxSize: 8000,
+	})
+
+	staffRule := "@request.auth.is_staff = true"
+	collection.ListRule = types.Pointer(staffRule)
+	collection.ViewRule = types.Pointer(staffRule)
+	collection.CreateRule = types.Pointer(staffRule)
+	collection.UpdateRule = types.Pointer(staffRule)
+	collection.DeleteRule = types.Pointer(staffRule)
+
+	return saveCollection(app, collection)
+}
+
+func saveCollection(app core.App, collection *core.Collection) error {
+	if existing, err := app.FindCollectionByNameOrId(collection.Id); err == nil {
+		existing.Name = collection.Name
+		existing.Type = collection.Type
+		existing.System = collection.System
+		existing.ListRule = collection.ListRule
+		existing.ViewRule = collection.ViewRule
+		existing.CreateRule = collection.CreateRule
+		existing.UpdateRule = collection.UpdateRule
+		existing.DeleteRule = collection.DeleteRule
+		existing.Fields = collection.Fields
+		existing.Indexes = collection.Indexes
+
+		if existing.IsAuth() && collection.IsAuth() {
+			existing.AuthRule = collection.AuthRule
+			existing.ManageRule = collection.ManageRule
+			existing.AuthAlert = collection.AuthAlert
+			existing.OAuth2 = collection.OAuth2
+			existing.PasswordAuth = collection.PasswordAuth
+			existing.MFA = collection.MFA
+			existing.OTP = collection.OTP
+			existing.AuthToken = collection.AuthToken
+			existing.PasswordResetToken = collection.PasswordResetToken
+			existing.EmailChangeToken = collection.EmailChangeToken
+			existing.VerificationToken = collection.VerificationToken
+			existing.FileToken = collection.FileToken
+			existing.VerificationTemplate = collection.VerificationTemplate
+			existing.ResetPasswordTemplate = collection.ResetPasswordTemplate
+			existing.ConfirmEmailChangeTemplate = collection.ConfirmEmailChangeTemplate
+		}
+
+		existing.MarkAsNotNew()
+		return app.Save(existing)
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	return app.Save(collection)
 }
 
 func setAccessRules(app core.App) error {
@@ -55,13 +614,41 @@ func setAccessRules(app core.App) error {
 		return err
 	}
 
+	users, err := app.FindCollectionByNameOrId("users")
+	if err != nil {
+		return err
+	}
+	usersListRule := "@request.auth.is_staff = true"
+	usersViewRule := "@request.auth.is_staff = true || id = @request.auth.id"
+	users.ListRule = types.Pointer(usersListRule)
+	users.ViewRule = types.Pointer(usersViewRule)
+	if err := app.Save(users); err != nil {
+		return err
+	}
+
+	records := []*core.Record{}
+	if err := app.RecordQuery(users).All(&records); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	for _, record := range records {
+		if record.EmailVisibility() {
+			continue
+		}
+		record.SetEmailVisibility(true)
+		if err := app.Save(record); err != nil {
+			return err
+		}
+	}
+
 	requests, err := app.FindCollectionByNameOrId("requests")
 	if err != nil {
 		return err
 	}
-	requests.ListRule = types.Pointer("@request.auth.is_staff = true || user.id = @request.auth.id")
-	requests.ViewRule = types.Pointer("@request.auth.is_staff = true || user.id = @request.auth.id")
-	requests.CreateRule = types.Pointer("@request.auth.is_staff = true || user.id = @request.auth.id")
+	ownerRule := "@request.auth.is_staff = true || user = @request.auth.id"
+	requests.ListRule = types.Pointer(ownerRule)
+	requests.ViewRule = types.Pointer(ownerRule)
+	requests.CreateRule = types.Pointer(ownerRule)
 	if err := app.Save(requests); err != nil {
 		return err
 	}
@@ -70,8 +657,9 @@ func setAccessRules(app core.App) error {
 	if err != nil {
 		return err
 	}
-	invoices.ListRule = types.Pointer("@request.auth.is_staff = true || request.user.id = @request.auth.id")
-	invoices.ViewRule = types.Pointer("@request.auth.is_staff = true || request.user.id = @request.auth.id")
+	invoicesRule := "@request.auth.is_staff = true || (@collection.requests:auth.id ?= request && @collection.requests:auth.user ?= @request.auth.id)"
+	invoices.ListRule = types.Pointer(invoicesRule)
+	invoices.ViewRule = types.Pointer(invoicesRule)
 	if err := app.Save(invoices); err != nil {
 		return err
 	}
@@ -80,8 +668,9 @@ func setAccessRules(app core.App) error {
 	if err != nil {
 		return err
 	}
-	assignments.ListRule = types.Pointer("@request.auth.is_staff = true || request.user.id = @request.auth.id")
-	assignments.ViewRule = types.Pointer("@request.auth.is_staff = true || request.user.id = @request.auth.id")
+	assignmentsRule := "@request.auth.is_staff = true || (@collection.requests:auth.id ?= request && @collection.requests:auth.user ?= @request.auth.id)"
+	assignments.ListRule = types.Pointer(assignmentsRule)
+	assignments.ViewRule = types.Pointer(assignmentsRule)
 	if err := app.Save(assignments); err != nil {
 		return err
 	}
@@ -90,897 +679,12 @@ func setAccessRules(app core.App) error {
 	if err != nil {
 		return err
 	}
-	renewals.ListRule = types.Pointer("@request.auth.is_staff = true || assignment.request.user.id = @request.auth.id")
-	renewals.ViewRule = types.Pointer("@request.auth.is_staff = true || assignment.request.user.id = @request.auth.id")
+	renewalsRule := "@request.auth.is_staff = true || (@collection.assignments:auth.id ?= assignment && @collection.assignments:auth.request ?= @collection.requests:auth.id && @collection.requests:auth.user ?= @request.auth.id)"
+	renewals.ListRule = types.Pointer(renewalsRule)
+	renewals.ViewRule = types.Pointer(renewalsRule)
 	if err := app.Save(renewals); err != nil {
 		return err
 	}
 
 	return nil
 }
-
-const collectionsJSON = `
-[
-  {
-    "id": "dhzkdxx71dfmt62",
-    "name": "zones",
-    "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "name",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": true,
-        "options": {
-          "min": 2,
-          "max": 64,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "description",
-        "type": "text",
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": 500,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "class_tags",
-        "type": "json",
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "maxSize": 2000
-        }
-      },
-      {
-        "system": false,
-        "name": "map_image",
-        "type": "file",
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "maxSize": 5242880,
-          "mimeTypes": [
-            "image/png",
-            "image/jpeg",
-            "application/pdf"
-          ],
-          "thumbs": [
-            "200x200",
-            "400x400"
-          ],
-          "protected": false
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": "@request.auth.id != ''",
-    "viewRule": "@request.auth.id != ''",
-    "createRule": ".auth.is_staff = true",
-    "updateRule": ".auth.is_staff = true",
-    "deleteRule": ".auth.is_staff = true",
-    "options": {}
-  },
-  {
-    "id": "y4wbfxylw6a5xoy",
-    "name": "lockers",
-    "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "number",
-        "type": "number",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 1
-        }
-      },
-      {
-        "system": false,
-        "name": "zone",
-        "type": "relation",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "collectionId": "dhzkdxx71dfmt62",
-          "cascadeDelete": false,
-          "minSelect": 1,
-          "maxSelect": 1,
-          "displayFields": [
-            "name"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "status",
-        "type": "select",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "free",
-            "reserved",
-            "occupied",
-            "maintenance"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "note",
-        "type": "text",
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": 400,
-          "pattern": ""
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": ".auth.id != ''",
-    "viewRule": ".auth.id != ''",
-    "createRule": ".auth.is_staff = true",
-    "updateRule": ".auth.is_staff = true",
-    "deleteRule": ".auth.is_staff = true",
-    "options": {}
-  },
-  {
-    "id": "fq7fn8e5esohuql",
-    "name": "users",
-    "type": "auth",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "full_name",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 2,
-          "max": 120,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "address",
-        "type": "text",
-        "required": true,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 4,
-          "max": 200,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "phone",
-        "type": "text",
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": 32,
-          "pattern": "^\\+?[0-9\\s-]{7,}$"
-        }
-      },
-      {
-        "system": false,
-        "name": "language",
-        "type": "select",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "de",
-            "en"
-          ],
-          "defaultValue": "de"
-        }
-      },
-      {
-        "system": false,
-        "name": "is_staff",
-        "type": "bool",
-        "required": false,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "default": false
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": null,
-    "viewRule": null,
-    "createRule": "",
-    "updateRule": null,
-    "deleteRule": null,
-    "options": {
-      "allowEmailAuth": true,
-      "allowOAuth2Auth": false,
-      "allowUsernameAuth": false,
-      "exceptEmailDomains": null,
-      "onlyEmailDomains": null,
-      "requireEmail": true,
-      "requireVerifiedEmail": false,
-      "mfa": false,
-      "minPasswordLength": 8
-    }
-  },
-  {
-    "id": "qjz4kuz8hypkff2",
-    "name": "requests",
-    "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "user",
-        "type": "relation",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "collectionId": "fq7fn8e5esohuql",
-          "cascadeDelete": false,
-          "minSelect": 1,
-          "maxSelect": 1,
-          "displayFields": [
-            "email"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "student_name",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 2,
-          "max": 120,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "student_class",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 1,
-          "max": 20,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "school_year",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 7,
-          "max": 9,
-          "pattern": "^[0-9]{4}/[0-9]{2}$"
-        }
-      },
-      {
-        "system": false,
-        "name": "preferred_zone",
-        "type": "relation",
-        "required": false,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "collectionId": "dhzkdxx71dfmt62",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": [
-            "name"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "preferred_locker",
-        "type": "text",
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": 10,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "status",
-        "type": "select",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "pending",
-            "reserved",
-            "expired",
-            "assigned",
-            "cancelled"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "submitted_at",
-        "type": "date",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": null,
-    "viewRule": null,
-    "createRule": null,
-    "updateRule": ".auth.is_staff = true",
-    "deleteRule": ".auth.is_staff = true",
-    "options": {}
-  },
-  {
-    "id": "jm440cli71sfxzb",
-    "name": "reservations",
-    "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "request",
-        "type": "relation",
-        "required": true,
-        "presentable": true,
-        "unique": true,
-        "options": {
-          "collectionId": "qjz4kuz8hypkff2",
-          "cascadeDelete": true,
-          "minSelect": 1,
-          "maxSelect": 1,
-          "displayFields": [
-            "id"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "locker",
-        "type": "relation",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "collectionId": "y4wbfxylw6a5xoy",
-          "cascadeDelete": false,
-          "minSelect": 1,
-          "maxSelect": 1,
-          "displayFields": [
-            "number"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "expires_at",
-        "type": "date",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": ".auth.is_staff = true",
-    "viewRule": ".auth.is_staff = true",
-    "createRule": ".auth.is_staff = true",
-    "updateRule": ".auth.is_staff = true",
-    "deleteRule": ".auth.is_staff = true",
-    "options": {}
-  },
-  {
-    "id": "vemsb4s051evn7f",
-    "name": "invoices",
-    "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "request",
-        "type": "relation",
-        "required": true,
-        "presentable": true,
-        "unique": true,
-        "options": {
-          "collectionId": "qjz4kuz8hypkff2",
-          "cascadeDelete": true,
-          "minSelect": 1,
-          "maxSelect": 1,
-          "displayFields": [
-            "id"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "number",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": true,
-        "options": {
-          "min": 4,
-          "max": 32,
-          "pattern": "^INV-[0-9]{6}$"
-        }
-      },
-      {
-        "system": false,
-        "name": "amount",
-        "type": "number",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 0
-        }
-      },
-      {
-        "system": false,
-        "name": "currency",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 3,
-          "max": 3,
-          "pattern": "^[A-Z]{3}$"
-        }
-      },
-      {
-        "system": false,
-        "name": "status",
-        "type": "select",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "draft",
-            "sent",
-            "paid",
-            "cancelled"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "due_at",
-        "type": "date",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "paid_at",
-        "type": "date",
-        "required": false,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "pdf",
-        "type": "file",
-        "required": false,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "maxSize": 10485760,
-          "mimeTypes": [
-            "application/pdf"
-          ],
-          "thumbs": [],
-          "protected": true
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": null,
-    "viewRule": null,
-    "createRule": ".auth.is_staff = true",
-    "updateRule": ".auth.is_staff = true",
-    "deleteRule": ".auth.is_staff = true",
-    "options": {}
-  },
-  {
-    "id": "i0zawt7irmi5rgf",
-    "name": "assignments",
-    "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "request",
-        "type": "relation",
-        "required": true,
-        "presentable": true,
-        "unique": true,
-        "options": {
-          "collectionId": "qjz4kuz8hypkff2",
-          "cascadeDelete": true,
-          "minSelect": 1,
-          "maxSelect": 1,
-          "displayFields": [
-            "id"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "locker",
-        "type": "relation",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "collectionId": "y4wbfxylw6a5xoy",
-          "cascadeDelete": false,
-          "minSelect": 1,
-          "maxSelect": 1,
-          "displayFields": [
-            "number"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "assigned_at",
-        "type": "date",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": null,
-    "viewRule": null,
-    "createRule": ".auth.is_staff = true",
-    "updateRule": ".auth.is_staff = true",
-    "deleteRule": ".auth.is_staff = true",
-    "options": {}
-  },
-  {
-    "id": "1csagpg9ce4ojad",
-    "name": "renewals",
-    "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "assignment",
-        "type": "relation",
-        "required": true,
-        "presentable": true,
-        "unique": true,
-        "options": {
-          "collectionId": "i0zawt7irmi5rgf",
-          "cascadeDelete": true,
-          "minSelect": 1,
-          "maxSelect": 1,
-          "displayFields": [
-            "id"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "school_year",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 7,
-          "max": 9,
-          "pattern": "^[0-9]{4}/[0-9]{2}$"
-        }
-      },
-      {
-        "system": false,
-        "name": "status",
-        "type": "select",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "pending",
-            "confirmed",
-            "expired",
-            "cancelled"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "renewed_at",
-        "type": "date",
-        "required": false,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": null,
-    "viewRule": null,
-    "createRule": ".auth.is_staff = true",
-    "updateRule": ".auth.is_staff = true",
-    "deleteRule": ".auth.is_staff = true",
-    "options": {}
-  },
-  {
-    "id": "wd8z33xdvc1uwe6",
-    "name": "email_queue",
-    "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "recipient",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 3,
-          "max": 255,
-          "pattern": "^[^@\\n]+@[^@\\n]+\\.[^@\\n]+$"
-        }
-      },
-      {
-        "system": false,
-        "name": "subject",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 1,
-          "max": 200,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "template",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 2,
-          "max": 80,
-          "pattern": "^[a-z0-9_]+$"
-        }
-      },
-      {
-        "system": false,
-        "name": "payload",
-        "type": "json",
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "maxSize": 4000
-        }
-      },
-      {
-        "system": false,
-        "name": "status",
-        "type": "select",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "pending",
-            "sending",
-            "sent",
-            "failed"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "error",
-        "type": "text",
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": 500,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "sent_at",
-        "type": "date",
-        "required": false,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": ".auth.is_staff = true",
-    "viewRule": ".auth.is_staff = true",
-    "createRule": ".auth.is_staff = true",
-    "updateRule": ".auth.is_staff = true",
-    "deleteRule": ".auth.is_staff = true",
-    "options": {}
-  },
-  {
-    "id": "dpnhs2xr3by2ue8",
-    "name": "audit_logs",
-    "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "system": false,
-        "name": "actor",
-        "type": "relation",
-        "required": false,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "collectionId": "fq7fn8e5esohuql",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": [
-            "email"
-          ]
-        }
-      },
-      {
-        "system": false,
-        "name": "action",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 2,
-          "max": 120,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "collection",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 1,
-          "max": 64,
-          "pattern": ""
-        }
-      },
-      {
-        "system": false,
-        "name": "record_id",
-        "type": "text",
-        "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 15,
-          "max": 15,
-          "pattern": "^[a-z0-9]{15}$"
-        }
-      },
-      {
-        "system": false,
-        "name": "diff",
-        "type": "json",
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "maxSize": 8000
-        }
-      }
-    ],
-    "indexes": [],
-    "listRule": ".auth.is_staff = true",
-    "viewRule": ".auth.is_staff = true",
-    "createRule": ".auth.is_staff = true",
-    "updateRule": ".auth.is_staff = true",
-    "deleteRule": ".auth.is_staff = true",
-    "options": {}
-  }
-]
-`

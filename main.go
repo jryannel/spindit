@@ -14,6 +14,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/osutils"
 
 	"github.com/jryannel/spindit/internal/app/cronjobs"
+	"github.com/jryannel/spindit/internal/app/hooks/autoreserve"
 	"github.com/jryannel/spindit/internal/pbext/pdf"
 	_ "github.com/jryannel/spindit/migrations"
 )
@@ -76,6 +77,7 @@ func main() {
 	}
 
 	cronjobs.Register(app)
+	autoreserve.Register(app)
 
 	if err := app.Start(); err != nil {
 		log.Fatal(err)

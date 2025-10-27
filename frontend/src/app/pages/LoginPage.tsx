@@ -1,8 +1,9 @@
 import { Anchor, Button, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useState } from 'react';
-import { useLocation, useNavigate, type Location } from 'react-router-dom';
-import { useAuth } from '../../features/auth/AuthContext';
+import { useLocation, useNavigate, type Location, Link } from 'react-router-dom';
+import { useAuth, type AuthUser } from '../../features/auth';
+import { pb } from '../../lib/pocketbase';
 
 interface LoginForm {
   email: string;
@@ -26,8 +27,9 @@ export const LoginPage = () => {
   const handleSubmit = form.onSubmit(async (values: LoginForm) => {
     setError(null);
     try {
-      await login(values.email, values.password);
-      const redirectTo = location?.state?.from?.pathname ?? '/';
+      const loggedIn = (await login(values.email, values.password)) ?? (pb.authStore.model as AuthUser | null);
+      const redirectFallback = loggedIn?.is_staff ? '/staff/dashboard' : '/app';
+      const redirectTo = location?.state?.from?.pathname ?? redirectFallback;
       navigate(redirectTo, { replace: true });
     } catch (err) {
       console.error(err);
@@ -44,7 +46,7 @@ export const LoginPage = () => {
           </Title>
           <form onSubmit={handleSubmit}>
             <Stack>
-              <TextInput label="Email" placeholder="parent@example.edu" {...form.getInputProps('email')} required />
+              <TextInput label="Email" placeholder="family@example.edu" {...form.getInputProps('email')} required />
               <PasswordInput label="Password" placeholder="•••••••" {...form.getInputProps('password')} required />
               {error && (
                 <Text c="red" size="sm">
@@ -56,8 +58,8 @@ export const LoginPage = () => {
               </Button>
             </Stack>
           </form>
-          <Anchor size="sm" c="dimmed">
-            Need access? Contact the school office.
+          <Anchor size="sm" c="dimmed" component={Link} to="/signup">
+            Need access? Create an account.
           </Anchor>
         </Stack>
       </Paper>

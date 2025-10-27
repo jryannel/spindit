@@ -16,6 +16,11 @@ tasks:
     cmds:
       - go run . serve --dev --migrationsDir ./migrations
 
+  migrate:
+    desc: Apply PocketBase migrations
+    cmds:
+      - go run . migrate --migrationsDir ./migrations
+
   test:
     desc: Execute Go unit tests
     cmds:
@@ -26,6 +31,12 @@ tasks:
     cmds:
       - go fmt ./...
       - go mod tidy
+
+  reset:
+    desc: Delete the PocketBase data directory (pb_data)
+    cmds:
+      - rm -rf pb_data
+      - go run . superuser upsert admin@example.com changeme123
 
   frontend:install:
     desc: Install frontend dependencies

@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Loader, Center } from '@mantine/core';
-import { useAuth } from '../../features/auth/AuthContext';
+import { useAuth } from '../../features/auth';
 
 export const AuthGuard = () => {
   const { user, isLoading } = useAuth();
